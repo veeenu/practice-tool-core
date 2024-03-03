@@ -16,8 +16,3 @@ imgui-glow-renderer = "0.11.0"
 imgui-sdl2-support = "0.11.0"
 sdl2 = { version = "0.34.5" }
 tempfile = "3.10.1"
-
-[[test]]
-name = "integration"
-path = "tests/integration.rs"
-harness = false

@@ -1,39 +1,50 @@
 use std::fs;
 
 use practice_tool_core::widgets::flag::{Flag, FlagWidget};
+use practice_tool_core::widgets::group::Group;
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
 use practice_tool_core::widgets::Widget;
 
 mod harness;
 
-type TestVec = Vec<Box<harness::Test>>;
+macro_rules! harness_test {
+    ($($t:expr),+) => {
+        harness::test(vec![
+            $(Box::new({ $t })),*
+        ])
+    }
+}
 
-fn test_flag(tests: &mut TestVec) {
-    struct TestFlag(bool);
+struct TestFlag(bool);
 
-    impl Flag for TestFlag {
-        fn set(&mut self, value: bool) {
-            self.0 = value;
-        }
-
-        fn get(&self) -> Option<bool> {
-            Some(self.0)
-        }
+impl Flag for TestFlag {
+    fn set(&mut self, value: bool) {
+        self.0 = value;
     }
 
+    fn get(&self) -> Option<bool> {
+        Some(self.0)
+    }
+}
+
+#[test]
+fn test_flag() {
+    // TODO
+    // These all activate when pressing ctrl+lalt+rshift+f because they technically match.
+    // Does it make sense to make this more restrictive?
     let mut flag1 = FlagWidget::new("test 1", TestFlag(true), "ctrl+f".parse().ok());
     let mut flag2 = FlagWidget::new("test 2", TestFlag(true), "ctrl+alt+f".parse().ok());
     let mut flag3 = FlagWidget::new("test 3", TestFlag(true), "ctrl+lalt+rshift+f".parse().ok());
 
-    // TODO
-    // These all activate when pressing ctrl+lalt+rshift+f because they technically match.
-    // Does it make sense to make this more restrictive?
-    tests.push(Box::new(move |ui| flag1.render(ui)));
-    tests.push(Box::new(move |ui| flag2.render(ui)));
-    tests.push(Box::new(move |ui| flag3.render(ui)));
+    harness_test! {
+        move |ui| flag1.render(ui),
+        move |ui| flag2.render(ui),
+        move |ui| flag3 .render(ui)
+    };
 }
 
-fn test_savefile_manager(tests: &mut TestVec) {
+#[test]
+fn test_savefile_manager() {
     let tmp_dir = tempfile::tempdir().unwrap();
 
     println!("{tmp_dir:?}");
@@ -58,18 +69,24 @@ fn test_savefile_manager(tests: &mut TestVec) {
         SavefileManager::new(Some("ctrl+o".parse().unwrap()), tmp_dir.path().join("ER0000.sl2"));
     let mut savefile_manager = (tmp_dir, savefile_manager);
 
-    tests.push(Box::new(move |ui| {
-        let file_path = savefile_manager.0.path().join("ER0000.sl2");
-        savefile_manager.1.render(ui);
-        ui.text(format!("File contains: {}", fs::read_to_string(file_path).unwrap()));
-    }));
+    harness_test! {
+        move |ui| {
+            let file_path = savefile_manager.0.path().join("ER0000.sl2");
+            savefile_manager.1.render(ui);
+            ui.text(format!("File contains: {}", fs::read_to_string(file_path).unwrap()));
+        }
+    };
 }
 
-fn main() {
-    let mut tests = vec![];
+#[test]
+fn test_group() {
+    let flag1 = Box::new(FlagWidget::new("test 1", TestFlag(true), None));
+    let flag2 = Box::new(FlagWidget::new("test 2", TestFlag(true), None));
+    let flag3 = Box::new(FlagWidget::new("test 3", TestFlag(true), None));
 
-    test_flag(&mut tests);
-    test_savefile_manager(&mut tests);
+    let mut group = Group::new("Test group", "escape".parse().unwrap(), vec![flag1, flag2, flag3]);
 
-    harness::test(tests);
+    harness_test! {
+        move |ui| group.render(ui)
+    };
 }
