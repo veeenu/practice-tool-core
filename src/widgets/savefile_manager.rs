@@ -1,13 +1,20 @@
 use std::{
     cmp::Ordering,
+    io,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::mpsc::Sender,
+    sync::{
+        atomic::{AtomicBool, Ordering as SyncOrdering},
+        mpsc::Sender,
+    },
 };
 
 use imgui::{
-    sys::{igGetCursorPosX, igGetCursorPosY, igGetWindowPos, igSetNextWindowPos, ImVec2},
-    Condition, ListBox,
+    sys::{
+        igGetCursorPosX, igGetCursorPosY, igGetTreeNodeToLabelSpacing, igGetWindowPos, igIndent,
+        igSetNextWindowPos, igUnindent, ImVec2,
+    },
+    Condition, ListBox, TreeNodeFlags, Ui,
 };
 
 use crate::key::Key;
@@ -49,8 +56,9 @@ struct SavefileManagerInner {
     key_down: Key,
     key_up: Key,
     key_enter: Key,
-    dir_stack: DirStack,
+    file_tree: FileTree,
     savefile_path: PathBuf,
+    current_file: Option<PathBuf>,
     breadcrumbs: String,
     savefile_name: String,
     input_edited: bool,
@@ -70,7 +78,7 @@ impl SavefileManagerInner {
             ));
         };
 
-        let dir_stack = DirStack::new(savefile_path_parent)
+        let file_tree = FileTree::new(savefile_path_parent.to_path_buf())
             .map_err(|e| format!("Couldn't construct file browser: {}", e))?;
 
         Ok(SavefileManagerInner {
@@ -79,7 +87,8 @@ impl SavefileManagerInner {
             key_down: "down".parse().unwrap(),
             key_up: "up".parse().unwrap(),
             key_enter: "enter".parse().unwrap(),
-            dir_stack,
+            file_tree,
+            current_file: None,
             savefile_path,
             savefile_name: String::new(),
             breadcrumbs: "/".to_string(),
@@ -89,7 +98,7 @@ impl SavefileManagerInner {
     }
 
     fn load_savefile(&mut self) {
-        if let Some(src_path) = self.dir_stack.current() {
+        if let Some(src_path) = self.current_file.as_ref() {
             if src_path.is_file() {
                 match load_savefile(src_path, &self.savefile_path) {
                     Ok(()) => self.logs.push(format!(
@@ -110,16 +119,25 @@ impl SavefileManagerInner {
             self.logs.push(String::from("Cannot save to empty filename"));
             return;
         }
+
         if self.savefile_name.contains('/') || self.savefile_name.contains('\\') {
             self.logs.push(String::from("Savefile name cannot contain path separator"));
             return;
         }
-        let mut dst_path = PathBuf::from(self.dir_stack.path());
+
+        let mut dst_path = self
+            .current_file
+            .as_ref()
+            .and_then(|c| c.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| self.file_tree.path().to_path_buf());
         dst_path.push(&self.savefile_name);
+
         match import_savefile(&dst_path, &self.savefile_path) {
             Ok(()) => {
                 self.savefile_name.clear();
-                self.dir_stack.refresh();
+                if let Err(e) = self.file_tree.refresh() {
+                    self.logs.push(format!("Couldn't refresh file tree: {e}"));
+                }
                 self.logs.push(format!(
                     "Imported {}/{}",
                     if self.breadcrumbs == "/" { "" } else { &self.breadcrumbs },
@@ -132,10 +150,9 @@ impl SavefileManagerInner {
 }
 
 impl Widget for SavefileManagerInner {
-    fn render(&mut self, ui: &imgui::Ui) {
+    fn render(&mut self, ui: &Ui) {
         let scale = scaling_factor(ui);
         let button_width = BUTTON_WIDTH * scale;
-        let button_height = BUTTON_HEIGHT;
 
         let (x, y) = unsafe {
             let mut wnd_pos = ImVec2::default();
@@ -143,9 +160,11 @@ impl Widget for SavefileManagerInner {
             (igGetCursorPosX() + wnd_pos.x, igGetCursorPosY() + wnd_pos.y)
         };
 
-        if ui.button_with_size("Savefile manager", [button_width, button_height]) {
+        if ui.button_with_size(&self.label, [button_width, BUTTON_HEIGHT]) {
             ui.open_popup(SFM_TAG);
-            self.dir_stack.refresh();
+            if let Err(e) = self.file_tree.refresh() {
+                self.logs.push(format!("Couldn't refresh file tree: {e}"));
+            }
         }
 
         unsafe {
@@ -171,46 +190,18 @@ impl Widget for SavefileManagerInner {
                     ui.set_scroll_x(ui.scroll_max_x());
                 });
 
-            let center_scroll_y = if self.key_down.is_pressed(ui) {
-                self.dir_stack.next();
-                true
-            } else if self.key_up.is_pressed(ui) {
-                self.dir_stack.prev();
-                true
-            } else {
-                false
-            };
-
-            if self.key_enter.is_pressed(ui) {
-                self.dir_stack.enter();
-            }
-
-            ListBox::new(SFML_TAG).size([button_width, 200. * scale]).build(ui, || {
-                if ui.selectable_config(".. Up one dir").build() {
-                    self.dir_stack.exit();
-                    self.breadcrumbs = self.dir_stack.breadcrumbs();
-                    self.dir_stack.refresh();
-                }
-
-                let mut goto: Option<usize> = None;
-                for (idx, is_selected, i) in self.dir_stack.values() {
-                    if ui.selectable_config(i).selected(is_selected).build() {
-                        goto = Some(idx);
-                    }
-
-                    if center_scroll_y && is_selected {
-                        ui.set_scroll_here_y();
-                    }
-                }
-
-                if let Some(idx) = goto {
-                    self.dir_stack.goto(idx);
-                    self.dir_stack.enter();
-                    self.breadcrumbs = self.dir_stack.breadcrumbs();
+            ui.child_window(SFML_TAG).size([button_width, 200. * scale]).build(|| {
+                if self.file_tree.render(ui, &mut self.current_file) {
+                    let root_path = self.file_tree.path();
+                    let child_path = self.current_file.as_ref().unwrap().parent().unwrap();
+                    self.breadcrumbs = format!(
+                        "/{}",
+                        child_path.strip_prefix(root_path).unwrap().to_string_lossy()
+                    );
                 }
             });
 
-            if ui.button_with_size(&self.label, [button_width, button_height]) {
+            if ui.button_with_size(&self.label, [button_width, BUTTON_HEIGHT]) {
                 self.load_savefile();
             }
 
@@ -224,15 +215,20 @@ impl Widget for SavefileManagerInner {
 
             ui.same_line();
 
-            if ui.button_with_size("Import", [button_width * 58. / 240., button_height]) {
+            if ui.button_with_size("Import", [button_width * 58. / 240., BUTTON_HEIGHT]) {
                 self.import_savefile();
             }
 
             ui.separator();
 
-            if ui.button_with_size("Show folder", [button_width, button_height]) {
-                let path = self.dir_stack.path().to_owned();
-                let path = if path.is_dir() { &path } else { path.parent().unwrap() };
+            if ui.button_with_size("Show folder", [button_width, BUTTON_HEIGHT]) {
+                let path = self
+                    .current_file
+                    .as_ref()
+                    .map(|p| p as &Path)
+                    .unwrap_or_else(|| self.file_tree.path());
+
+                let path = if path.is_dir() { path } else { path.parent().unwrap() };
 
                 if let Err(e) = Command::new("explorer.exe")
                     .stdin(Stdio::null())
@@ -245,193 +241,122 @@ impl Widget for SavefileManagerInner {
                 };
             }
 
-            if ui.button_with_size("Close", [button_width, button_height]) {
+            if ui.button_with_size("Close", [button_width, BUTTON_HEIGHT]) {
                 ui.close_current_popup();
-                self.dir_stack.refresh();
+                if let Err(e) = self.file_tree.refresh() {
+                    self.logs.push(format!("Couldn't refresh file tree: {e}"));
+                }
             }
-        }
-    }
-
-    fn interact(&mut self, ui: &imgui::Ui) {
-        if self.input_edited {
-            return;
-        }
-
-        if !ui.is_any_item_active() && self.key_load.map(|k| k.is_pressed(ui)).unwrap_or(false) {
-            self.load_savefile();
-        }
-    }
-
-    fn log(&mut self, tx: Sender<String>) {
-        for log in self.logs.drain(..) {
-            tx.send(log).ok();
         }
     }
 }
 
-#[derive(Debug)]
-struct DirEntry {
-    list: Vec<(PathBuf, String)>,
-    cursor: usize,
-    path: PathBuf,
+#[derive(Debug, PartialEq, Eq)]
+enum FileTree {
+    File { path: PathBuf },
+    Directory { path: PathBuf, children: Vec<FileTree> },
 }
 
-impl DirEntry {
-    fn new(path: &Path, cursor: Option<usize>) -> DirEntry {
-        let mut list = DirStack::ls(path).unwrap();
+impl FileTree {
+    fn new(path: PathBuf) -> Result<Self, std::io::Error> {
+        if path.is_file() {
+            Ok(FileTree::File { path })
+        } else if path.is_dir() {
+            let mut children = path
+                .read_dir()?
+                .map(|dir| FileTree::new(dir?.path()))
+                .collect::<Result<Vec<FileTree>, _>>()?;
 
-        list.sort_by(|a, b| {
-            let (ad, bd) = (a.is_dir(), b.is_dir());
+            children.sort();
 
-            if ad == bd {
-                a.cmp(b)
-            } else if ad && !bd {
-                Ordering::Less
-            } else {
-                Ordering::Greater
-            }
-        });
+            Ok(FileTree::Directory { path, children })
+        } else {
+            unreachable!("Savefile path is neither file nor directory");
+        }
+    }
 
-        let list: Vec<_> = list
-            .into_iter()
-            .map(|a| {
-                let repr = if a.is_dir() {
-                    format!("+  {}", a.file_name().unwrap().to_str().unwrap())
+    fn refresh(&mut self) -> Result<(), io::Error> {
+        if let FileTree::Directory { path, .. } = self {
+            *self = FileTree::new(path.to_path_buf())?;
+        }
+
+        Ok(())
+    }
+
+    fn file_name(&self) -> &str {
+        match self {
+            FileTree::File { path } | FileTree::Directory { path, .. } => {
+                path.file_name().unwrap().to_str().unwrap()
+            },
+        }
+    }
+
+    fn path(&self) -> &Path {
+        match self {
+            FileTree::File { path } | FileTree::Directory { path, .. } => path,
+        }
+    }
+
+    fn render(&self, ui: &Ui, current_file: &mut Option<PathBuf>) -> bool {
+        match self {
+            FileTree::File { path } => {
+                let is_current = current_file.as_ref().map(|f| f == path).unwrap_or(false);
+                let file_name = self.file_name();
+
+                unsafe { igUnindent(igGetTreeNodeToLabelSpacing()) };
+                ui.tree_node_config(file_name)
+                    .label::<&str, &str>(file_name)
+                    .flags(if is_current {
+                        TreeNodeFlags::LEAF
+                            | TreeNodeFlags::SELECTED
+                            | TreeNodeFlags::NO_TREE_PUSH_ON_OPEN
+                    } else {
+                        TreeNodeFlags::LEAF | TreeNodeFlags::NO_TREE_PUSH_ON_OPEN
+                    })
+                    .build(|| {});
+
+                unsafe { igIndent(igGetTreeNodeToLabelSpacing()) };
+
+                if ui.is_item_clicked() {
+                    *current_file = Some(path.clone());
+                    true
                 } else {
-                    format!("   {}", a.file_name().unwrap().to_str().unwrap())
-                };
-                (a, repr)
-            })
-            .collect();
+                    false
+                }
+            },
+            FileTree::Directory { children, .. } => {
+                let file_name = self.file_name();
+                let mut update_breadcrumbs = false;
 
-        let max_len = list.len();
+                ui.tree_node_config(file_name)
+                    .label::<&str, &str>(file_name)
+                    .flags(TreeNodeFlags::SPAN_AVAIL_WIDTH)
+                    .build(|| {
+                        for node in children {
+                            update_breadcrumbs |= node.render(ui, current_file);
+                        }
+                    });
 
-        DirEntry { list, cursor: cursor.unwrap_or(0).min(max_len), path: PathBuf::from(path) }
-    }
-
-    fn values(&self, directories_only: bool) -> impl IntoIterator<Item = (usize, bool, &str)> {
-        self.list
-            .iter()
-            .filter(move |(d, _)| !directories_only || d.is_dir())
-            .enumerate()
-            .map(|(i, f)| (i, i == self.cursor, f.1.as_str()))
-    }
-
-    fn current(&self) -> Option<&PathBuf> {
-        self.list.get(self.cursor).as_ref().map(|i| &i.0)
-    }
-
-    fn path(&self) -> &PathBuf {
-        &self.path
-    }
-
-    fn goto(&mut self, idx: usize) {
-        if idx < self.list.len() {
-            self.cursor = idx;
+                update_breadcrumbs
+            },
         }
-    }
-
-    fn prev(&mut self) {
-        self.cursor = self.cursor.saturating_sub(1);
-    }
-
-    fn next(&mut self) {
-        self.cursor = usize::min(self.cursor + 1, self.list.len() - 1);
     }
 }
 
-#[derive(Debug)]
-struct DirStack {
-    top: DirEntry,
-    stack: Vec<DirEntry>,
+impl PartialOrd for FileTree {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
-impl DirStack {
-    fn new(path: &Path) -> Result<Self, String> {
-        Ok(DirStack { top: DirEntry::new(path, None), stack: Vec::new() })
-    }
-
-    fn enter(&mut self) {
-        let new_entry = self
-            .stack
-            .last()
-            .unwrap_or(&self.top)
-            .current()
-            .filter(|current_entry| current_entry.is_dir())
-            .map(|current_entry| DirEntry::new(current_entry, None));
-
-        if let Some(e) = new_entry {
-            self.stack.push(e);
+impl Ord for FileTree {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (FileTree::File { path: a }, FileTree::File { path: b }) => a.cmp(b),
+            (FileTree::File { .. }, FileTree::Directory { .. }) => Ordering::Greater,
+            (FileTree::Directory { .. }, FileTree::File { .. }) => Ordering::Less,
+            (FileTree::Directory { path: a, .. }, FileTree::Directory { path: b, .. }) => a.cmp(b),
         }
-    }
-
-    fn exit(&mut self) -> bool {
-        if self.stack.is_empty() {
-            true
-        } else {
-            self.stack.pop().unwrap();
-            false
-        }
-    }
-
-    fn breadcrumbs(&self) -> String {
-        if self.stack.is_empty() {
-            String::from("/")
-        } else {
-            let mut breadcrumbs = String::new();
-            for e in &self.stack {
-                breadcrumbs.push('/');
-                breadcrumbs.push_str(e.path().file_name().unwrap().to_str().unwrap());
-            }
-            breadcrumbs
-        }
-    }
-
-    fn values(&self) -> impl IntoIterator<Item = (usize, bool, &str)> {
-        match self.stack.last() {
-            Some(d) => d.values(false).into_iter(),
-            None => self.top.values(true).into_iter(),
-        }
-    }
-
-    fn current(&self) -> Option<&PathBuf> {
-        self.stack.last().unwrap_or(&self.top).current()
-    }
-
-    fn path(&self) -> &PathBuf {
-        self.stack.last().unwrap_or(&self.top).path()
-    }
-
-    fn goto(&mut self, idx: usize) {
-        self.stack.last_mut().unwrap_or(&mut self.top).goto(idx);
-    }
-
-    fn prev(&mut self) {
-        self.stack.last_mut().unwrap_or(&mut self.top).prev();
-    }
-
-    fn next(&mut self) {
-        self.stack.last_mut().unwrap_or(&mut self.top).next();
-    }
-
-    fn refresh(&mut self) {
-        if let Some(l) = self.stack.last_mut() {
-            *l = DirEntry::new(l.path(), Some(l.cursor));
-        } else {
-            self.top = DirEntry::new(self.top.path(), Some(self.top.cursor));
-        }
-    }
-
-    // TODO SAFETY
-    // FS errors would be permission denied (which shouldn't happen but should be
-    // reported) and not a directory (which doesn't happen because we checked
-    // for is_dir). For the moment, I just unwrap.
-    fn ls(path: &Path) -> Result<Vec<PathBuf>, String> {
-        Ok(std::fs::read_dir(path)
-            .map_err(|e| format!("{}", e))?
-            .filter_map(Result::ok)
-            .map(|f| f.path())
-            .collect())
     }
 }
 

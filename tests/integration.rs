@@ -1,13 +1,12 @@
-use imgui::Ui;
+use std::fs;
+
 use practice_tool_core::widgets::{
     flag::{Flag, FlagWidget},
-    savefile_manager::{self, SavefileManager},
+    savefile_manager::SavefileManager,
     Widget,
 };
 
 mod harness;
-
-struct TestWidget<W>(W);
 
 type TestVec = Vec<Box<harness::Test>>;
 
@@ -39,17 +38,32 @@ fn test_flag(tests: &mut TestVec) {
 fn test_savefile_manager(tests: &mut TestVec) {
     let tmp_dir = tempfile::tempdir().unwrap();
 
-    std::fs::write(tmp_dir.path().join("ER0000.sl2"), "ER0000.sl2").unwrap();
-    std::fs::write(tmp_dir.path().join("foo.sl2"), "foo").unwrap();
-    std::fs::write(tmp_dir.path().join("bar.sl2"), "bar").unwrap();
+    println!("{tmp_dir:?}");
+
+    fs::write(tmp_dir.path().join("ER0000.sl2"), "ER0000.sl2").unwrap();
+    fs::write(tmp_dir.path().join("foo.sl2"), "foo").unwrap();
+    fs::write(tmp_dir.path().join("bar.sl2"), "bar").unwrap();
+    fs::create_dir_all(tmp_dir.path().join("Any%")).unwrap();
+    fs::write(tmp_dir.path().join("Any%").join("ER0001.sl2"), "ER0001.sl2").unwrap();
+    fs::write(tmp_dir.path().join("Any%").join("foo1.sl2"), "foo1").unwrap();
+    fs::write(tmp_dir.path().join("Any%").join("bar1.sl2"), "bar1").unwrap();
+    fs::create_dir_all(tmp_dir.path().join("All Bosses")).unwrap();
+    fs::write(tmp_dir.path().join("All Bosses").join("ER0002.sl2"), "ER0002.sl2").unwrap();
+    fs::write(tmp_dir.path().join("All Bosses").join("foo2.sl2"), "foo2").unwrap();
+    fs::write(tmp_dir.path().join("All Bosses").join("bar2.sl2"), "bar2").unwrap();
+    fs::create_dir_all(tmp_dir.path().join("Glitchless")).unwrap();
+    fs::write(tmp_dir.path().join("Glitchless").join("ER0003.sl2"), "ER0003.sl2").unwrap();
+    fs::write(tmp_dir.path().join("Glitchless").join("foo3.sl2"), "foo3").unwrap();
+    fs::write(tmp_dir.path().join("Glitchless").join("bar3.sl2"), "bar3").unwrap();
 
     let savefile_manager =
         SavefileManager::new(Some("ctrl+o".parse().unwrap()), tmp_dir.path().join("ER0000.sl2"));
     let mut savefile_manager = (tmp_dir, savefile_manager);
 
     tests.push(Box::new(move |ui| {
-        let _ = savefile_manager.0.path(); // keep the tmp directory alive
+        let file_path = savefile_manager.0.path().join("ER0000.sl2");
         savefile_manager.1.render(ui);
+        ui.text(format!("File contains: {}", fs::read_to_string(file_path).unwrap()));
     }));
 }
 
