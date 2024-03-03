@@ -18,7 +18,7 @@ pub trait Test {
     fn render(&mut self, ui: &Ui) -> bool;
 }
 
-pub fn test<T: Test + 'static>(mut test_case: T) {
+pub fn test<T: Test + 'static>(mut test_cases: Vec<T>) {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("practice-tool-core test harness")
@@ -86,7 +86,9 @@ pub fn test<T: Test + 'static>(mut test_case: T) {
 
                 let ui = ctx.frame();
 
-                test_case.render(ui);
+                for test_case in &mut test_cases {
+                    test_case.render(ui);
+                }
 
                 let mut encoder: wgpu::CommandEncoder =
                     device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
