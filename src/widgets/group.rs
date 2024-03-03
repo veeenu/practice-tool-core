@@ -3,9 +3,8 @@ use std::sync::mpsc::Sender;
 use imgui::sys::{igGetCursorPosX, igGetCursorPosY, igGetWindowPos, igSetNextWindowPos, ImVec2};
 use imgui::Condition;
 
-use crate::key::Key;
-
 use super::{Widget, BUTTON_HEIGHT, BUTTON_WIDTH};
+use crate::key::Key;
 
 pub struct Group {
     label: String,

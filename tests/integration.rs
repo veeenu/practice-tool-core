@@ -1,6 +1,7 @@
 use std::fs;
 
 use practice_tool_core::widgets::flag::{Flag, FlagWidget};
+use practice_tool_core::widgets::group::Group;
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
 use practice_tool_core::widgets::Widget;
 
@@ -14,20 +15,20 @@ macro_rules! harness_test {
     }
 }
 
-#[test]
-fn test_flag() {
-    struct TestFlag(bool);
+struct TestFlag(bool);
 
-    impl Flag for TestFlag {
-        fn set(&mut self, value: bool) {
-            self.0 = value;
-        }
-
-        fn get(&self) -> Option<bool> {
-            Some(self.0)
-        }
+impl Flag for TestFlag {
+    fn set(&mut self, value: bool) {
+        self.0 = value;
     }
 
+    fn get(&self) -> Option<bool> {
+        Some(self.0)
+    }
+}
+
+#[test]
+fn test_flag() {
     // TODO
     // These all activate when pressing ctrl+lalt+rshift+f because they technically match.
     // Does it make sense to make this more restrictive?
@@ -77,4 +78,15 @@ fn test_savefile_manager() {
     };
 }
 
-fn test_group() {}
+#[test]
+fn test_group() {
+    let flag1 = Box::new(FlagWidget::new("test 1", TestFlag(true), None));
+    let flag2 = Box::new(FlagWidget::new("test 2", TestFlag(true), None));
+    let flag3 = Box::new(FlagWidget::new("test 3", TestFlag(true), None));
+
+    let mut group = Group::new("Test group", "escape".parse().unwrap(), vec![flag1, flag2, flag3]);
+
+    harness_test! {
+        move |ui| group.render(ui)
+    };
+}

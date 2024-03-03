@@ -34,6 +34,8 @@ pub fn test(mut test_cases: Vec<Box<Test>>) {
         glow::Context::from_loader_function(|s| window.subsystem().gl_get_proc_address(s) as _)
     };
 
+    unsafe { gl.clear_color(0.26, 0.35, 0.38, 1.0) };
+
     let mut ctx = Context::create();
     ctx.set_ini_filename(None);
 
