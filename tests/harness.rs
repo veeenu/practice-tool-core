@@ -2,7 +2,8 @@ use glow::HasContext;
 use imgui::{Context, Ui};
 use imgui_glow_renderer::AutoRenderer;
 use imgui_sdl2_support::SdlPlatform;
-use sdl2::{event::Event, video::GLProfile};
+use sdl2::event::Event;
+use sdl2::video::GLProfile;
 
 pub type Test = dyn FnMut(&Ui);
 
@@ -42,7 +43,6 @@ pub fn test(mut test_cases: Vec<Box<Test>>) {
 
     'main: loop {
         for event in event_pump.poll_iter() {
-            /* pass all events to imgui platfrom */
             platform.handle_event(&mut ctx, &event);
 
             if let Event::Quit { .. } = event {

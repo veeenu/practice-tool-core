@@ -1,10 +1,8 @@
 use std::fs;
 
-use practice_tool_core::widgets::{
-    flag::{Flag, FlagWidget},
-    savefile_manager::SavefileManager,
-    Widget,
-};
+use practice_tool_core::widgets::flag::{Flag, FlagWidget};
+use practice_tool_core::widgets::savefile_manager::SavefileManager;
+use practice_tool_core::widgets::Widget;
 
 mod harness;
 

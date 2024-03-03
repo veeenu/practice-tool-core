@@ -1,21 +1,14 @@
-use std::{
-    cmp::Ordering,
-    io,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-    sync::{
-        atomic::{AtomicBool, Ordering as SyncOrdering},
-        mpsc::Sender,
-    },
-};
+use std::cmp::Ordering;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::mpsc::Sender;
 
-use imgui::{
-    sys::{
-        igGetCursorPosX, igGetCursorPosY, igGetTreeNodeToLabelSpacing, igGetWindowPos, igIndent,
-        igSetNextWindowPos, igUnindent, ImVec2,
-    },
-    Condition, ListBox, TreeNodeFlags, Ui,
+use imgui::sys::{
+    igGetCursorPosX, igGetCursorPosY, igGetTreeNodeToLabelSpacing, igGetWindowPos, igIndent,
+    igSetNextWindowPos, igUnindent, ImVec2,
 };
+use imgui::{Condition, TreeNodeFlags, Ui};
 
 use crate::key::Key;
 use crate::widgets::{scaling_factor, Widget, BUTTON_HEIGHT, BUTTON_WIDTH};
@@ -53,9 +46,6 @@ impl Widget for ErroredSavefileManager {
 struct SavefileManagerInner {
     label: String,
     key_load: Option<Key>,
-    key_down: Key,
-    key_up: Key,
-    key_enter: Key,
     file_tree: FileTree,
     savefile_path: PathBuf,
     current_file: Option<PathBuf>,
@@ -84,9 +74,6 @@ impl SavefileManagerInner {
         Ok(SavefileManagerInner {
             label,
             key_load,
-            key_down: "down".parse().unwrap(),
-            key_up: "up".parse().unwrap(),
-            key_enter: "enter".parse().unwrap(),
             file_tree,
             current_file: None,
             savefile_path,
@@ -201,7 +188,9 @@ impl Widget for SavefileManagerInner {
                 }
             });
 
-            if ui.button_with_size(&self.label, [button_width, BUTTON_HEIGHT]) {
+            if ui.button_with_size(&self.label, [button_width, BUTTON_HEIGHT])
+                || self.key_load.map(|key| key.is_pressed(ui)).unwrap_or(false)
+            {
                 self.load_savefile();
             }
 
@@ -247,6 +236,12 @@ impl Widget for SavefileManagerInner {
                     self.logs.push(format!("Couldn't refresh file tree: {e}"));
                 }
             }
+        }
+    }
+
+    fn log(&mut self, tx: Sender<String>) {
+        for log in self.logs.drain(..) {
+            tx.send(log).ok();
         }
     }
 }

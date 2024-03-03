@@ -1,5 +1,4 @@
 use crate::key::Key;
-
 use crate::widgets::Widget;
 
 pub trait Flag: Send + Sync {
