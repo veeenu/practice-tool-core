@@ -1,7 +1,9 @@
+use std::fmt::Write;
 use std::fs;
 
 use practice_tool_core::widgets::flag::{Flag, FlagWidget};
 use practice_tool_core::widgets::group::Group;
+use practice_tool_core::widgets::position::{Position, PositionStorage};
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
 use practice_tool_core::widgets::Widget;
 
@@ -29,17 +31,14 @@ impl Flag for TestFlag {
 
 #[test]
 fn test_flag() {
-    // TODO
-    // These all activate when pressing ctrl+lalt+rshift+f because they technically match.
-    // Does it make sense to make this more restrictive?
     let mut flag1 = FlagWidget::new("test 1", TestFlag(true), "ctrl+f".parse().ok());
-    let mut flag2 = FlagWidget::new("test 2", TestFlag(true), "ctrl+alt+f".parse().ok());
+    let mut flag2 = FlagWidget::new("test 2", TestFlag(true), "ctrl+shift+f".parse().ok());
     let mut flag3 = FlagWidget::new("test 3", TestFlag(true), "ctrl+lalt+rshift+f".parse().ok());
 
     harness_test! {
-        move |ui| flag1.render(ui),
-        move |ui| flag2.render(ui),
-        move |ui| flag3 .render(ui)
+        move |ui| { flag1.render(ui); flag1.interact(ui); },
+        move |ui| { flag2.render(ui); flag2.interact(ui); },
+        move |ui| { flag3.render(ui); flag3.interact(ui); }
     };
 }
 
@@ -89,4 +88,61 @@ fn test_group() {
     harness_test! {
         move |ui| group.render(ui)
     };
+}
+
+#[test]
+fn test_position() {
+    static mut X: f64 = 0.0;
+
+    struct DummyPositionStorage {
+        stored: f64,
+        label_current: String,
+        label_stored: String,
+    }
+
+    impl PositionStorage for DummyPositionStorage {
+        fn load(&mut self) {
+            unsafe { X = self.stored };
+        }
+
+        fn save(&mut self) {
+            self.stored = unsafe { X };
+        }
+
+        fn display_current(&mut self) -> &str {
+            self.label_current.clear();
+            write!(self.label_current, "{:.3}", unsafe { X }).ok();
+            unsafe { X += 0.001 };
+
+            &self.label_current
+        }
+
+        fn display_stored(&mut self) -> &str {
+            self.label_stored.clear();
+            write!(self.label_stored, "{:.3}", self.stored).ok();
+
+            &self.label_stored
+        }
+
+        fn is_valid(&self) -> bool {
+            (unsafe { X * 5. } as u32 % 2) == 1
+        }
+    }
+
+    let mut position = Position::new(
+        DummyPositionStorage {
+            stored: 0.0,
+            label_current: String::new(),
+            label_stored: String::new(),
+        },
+        "h".parse().ok(),
+        "rshift+h".parse().ok(),
+    );
+
+    harness_test! {
+        move |ui| {
+            position.render(ui);
+            position.interact(ui);
+        }
+    }
 }

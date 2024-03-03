@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use glow::HasContext;
 use imgui::{Context, Ui};
 use imgui_glow_renderer::AutoRenderer;
@@ -43,6 +45,9 @@ pub fn test(mut test_cases: Vec<Box<Test>>) {
     let mut renderer = AutoRenderer::initialize(gl, &mut ctx).unwrap();
     let mut event_pump = sdl.event_pump().unwrap();
 
+    let mut last = Instant::now();
+    let mut elapsed = last.elapsed();
+
     'main: loop {
         for event in event_pump.poll_iter() {
             platform.handle_event(&mut ctx, &event);
@@ -57,6 +62,11 @@ pub fn test(mut test_cases: Vec<Box<Test>>) {
         let ui = ctx.new_frame();
 
         ui.window("##test_window").build(|| {
+            ui.text(format!("FPS: {:.2}", 1. / elapsed.as_secs_f64()));
+
+            elapsed = elapsed.mul_f64(0.8) + last.elapsed().mul_f64(0.2);
+            last = Instant::now();
+
             for test_case in &mut test_cases {
                 test_case(ui);
             }

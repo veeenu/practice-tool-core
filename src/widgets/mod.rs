@@ -2,6 +2,7 @@ use std::sync::mpsc::Sender;
 
 pub mod flag;
 pub mod group;
+pub mod position;
 pub mod savefile_manager;
 
 pub(crate) const BUTTON_WIDTH: f32 = 320.;
