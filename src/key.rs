@@ -242,6 +242,52 @@ impl Modifier {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ModifierState {
+    key_ctrl: bool,
+    key_shift: bool,
+    key_alt: bool,
+    key_super: bool,
+}
+
+impl From<&Ui> for ModifierState {
+    fn from(value: &Ui) -> Self {
+        let io = value.io();
+        Self {
+            key_ctrl: io.key_ctrl,
+            key_shift: io.key_shift,
+            key_alt: io.key_alt,
+            key_super: io.key_super,
+        }
+    }
+}
+
+impl From<[Option<Modifier>; 3]> for ModifierState {
+    fn from(value: [Option<Modifier>; 3]) -> Self {
+        let mut modifier_state =
+            Self { key_ctrl: false, key_shift: false, key_alt: false, key_super: false };
+
+        for modifier in value.into_iter().flatten() {
+            match modifier {
+                Modifier::LeftCtrl | Modifier::RightCtrl | Modifier::ModCtrl => {
+                    modifier_state.key_ctrl = true
+                },
+                Modifier::LeftShift | Modifier::RightShift | Modifier::ModShift => {
+                    modifier_state.key_shift = true
+                },
+                Modifier::LeftAlt | Modifier::RightAlt | Modifier::ModAlt => {
+                    modifier_state.key_alt = true
+                },
+                Modifier::LeftSuper | Modifier::RightSuper | Modifier::ModSuper => {
+                    modifier_state.key_super = true
+                },
+            }
+        }
+
+        modifier_state
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Key {
     key: imgui::Key,
@@ -296,6 +342,7 @@ impl Key {
     pub fn is_down(&self, ui: &Ui) -> bool {
         ui.is_key_down(self.key)
             && self.modifiers.iter().all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
+            && ModifierState::from(ui) == ModifierState::from(self.modifiers)
     }
 
     pub fn is_up(&self, ui: &Ui) -> bool {
@@ -305,6 +352,7 @@ impl Key {
     pub fn is_pressed(&self, ui: &Ui) -> bool {
         ui.is_key_pressed(self.key)
             && self.modifiers.iter().all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
+            && ModifierState::from(ui) == ModifierState::from(self.modifiers)
     }
 }
 
