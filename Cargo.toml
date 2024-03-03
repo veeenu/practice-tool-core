@@ -13,6 +13,7 @@ parking_lot = "0.12.1"
 [dev-dependencies]
 imgui-wgpu = "0.24.0"
 pollster = "0.3.0"
+tempfile = "3.10.1"
 wgpu = "0.17.2"
 winit = "0.27.5"
 

@@ -2,7 +2,7 @@ use crate::key::Key;
 
 use crate::widgets::Widget;
 
-pub trait Flag: Send + Sync + 'static {
+pub trait Flag: Send + Sync {
     fn set(&mut self, value: bool);
     fn get(&self) -> Option<bool>;
     fn toggle(&mut self) {
