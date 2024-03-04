@@ -2,8 +2,8 @@ use crate::key::Key;
 use crate::widgets::{scaling_factor, Widget, BUTTON_HEIGHT, BUTTON_WIDTH};
 
 pub trait PositionStorage: Send + Sync + 'static {
-    fn load(&mut self);
-    fn save(&mut self);
+    fn read(&mut self);
+    fn write(&mut self);
     fn display_current(&mut self) -> &str;
     fn display_stored(&mut self) -> &str;
     fn is_valid(&self) -> bool;
@@ -11,8 +11,8 @@ pub trait PositionStorage: Send + Sync + 'static {
 
 pub struct Position<P: PositionStorage> {
     storage: P,
-    key_load: Option<Key>,
-    key_save: Option<Key>,
+    key_read: Option<Key>,
+    key_write: Option<Key>,
     label_load: String,
     label_save: String,
 }
@@ -24,15 +24,15 @@ impl<P: PositionStorage> Position<P> {
         let label_save =
             key_save.map(|k| format!("Save ({k})")).unwrap_or_else(|| "Save".to_string());
 
-        Self { storage, key_load, key_save, label_load, label_save }
+        Self { storage, key_read: key_load, key_write: key_save, label_load, label_save }
     }
 
     pub fn save_position(&mut self) {
-        self.storage.save();
+        self.storage.write();
     }
 
     pub fn load_position(&mut self) {
-        self.storage.load();
+        self.storage.read();
     }
 }
 
@@ -62,11 +62,11 @@ impl<S: PositionStorage> Widget for Position<S> {
             return;
         }
 
-        if self.key_save.map(|k| k.is_pressed(ui)).unwrap_or(false) {
+        if self.key_write.map(|k| k.is_pressed(ui)).unwrap_or(false) {
             self.save_position();
         }
 
-        if self.key_load.map(|k| k.is_pressed(ui)).unwrap_or(false) {
+        if self.key_read.map(|k| k.is_pressed(ui)).unwrap_or(false) {
             self.load_position();
         }
     }
