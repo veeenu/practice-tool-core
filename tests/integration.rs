@@ -5,6 +5,7 @@ use practice_tool_core::widgets::flag::{Flag, FlagWidget};
 use practice_tool_core::widgets::group::Group;
 use practice_tool_core::widgets::position::{Position, PositionStorage};
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
+use practice_tool_core::widgets::stats_editor::{Datum, Stats, StatsEditor};
 use practice_tool_core::widgets::Widget;
 
 mod harness;
@@ -101,11 +102,11 @@ fn test_position() {
     }
 
     impl PositionStorage for DummyPositionStorage {
-        fn load(&mut self) {
+        fn read(&mut self) {
             unsafe { X = self.stored };
         }
 
-        fn save(&mut self) {
+        fn write(&mut self) {
             self.stored = unsafe { X };
         }
 
@@ -143,6 +144,59 @@ fn test_position() {
         move |ui| {
             position.render(ui);
             position.interact(ui);
+        }
+    }
+}
+
+#[test]
+fn test_stats_editor() {
+    static mut STATS: (i32, i32, f32) = (10, 10, 10.0);
+
+    #[derive(Default)]
+    struct CharacterStats {
+        hp: i32,
+        mp: i32,
+        strength: f32,
+        open: bool,
+    }
+
+    impl Stats for CharacterStats {
+        fn data(&mut self) -> Option<impl Iterator<Item = Datum>> {
+            if self.open {
+                Some(
+                    [
+                        Datum::int("HP", &mut self.hp, 1, 99),
+                        Datum::int("MP", &mut self.mp, 1, 99),
+                        Datum::float("Strength", &mut self.strength, 1.0, 199.9),
+                    ]
+                    .into_iter(),
+                )
+            } else {
+                None
+            }
+        }
+
+        fn read(&mut self) {
+            self.open = true;
+            (self.hp, self.mp, self.strength) = unsafe { STATS };
+        }
+
+        fn write(&mut self) {
+            unsafe { STATS = (self.hp, self.mp, self.strength) };
+        }
+
+        fn clear(&mut self) {
+            self.open = false;
+        }
+    }
+
+    let mut stats_editor =
+        StatsEditor::<CharacterStats>::new(Default::default(), "escape".parse().ok());
+
+    harness_test! {
+        move |ui| {
+            stats_editor.render(ui);
+            stats_editor.interact(ui);
         }
     }
 }
