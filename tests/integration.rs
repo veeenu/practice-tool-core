@@ -3,6 +3,7 @@ use std::fs;
 
 use practice_tool_core::widgets::flag::{Flag, FlagWidget};
 use practice_tool_core::widgets::group::Group;
+use practice_tool_core::widgets::nudge_position::{NudgePosition, NudgePositionStorage};
 use practice_tool_core::widgets::position::{Position, PositionStorage};
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
 use practice_tool_core::widgets::stats_editor::{Datum, Stats, StatsEditor};
@@ -96,6 +97,7 @@ fn test_group() {
 fn test_position() {
     static mut X: f64 = 0.0;
 
+    #[derive(Default)]
     struct DummyPositionStorage {
         stored: f64,
         label_current: String,
@@ -131,20 +133,28 @@ fn test_position() {
         }
     }
 
-    let mut position = Position::new(
-        DummyPositionStorage {
-            stored: 0.0,
-            label_current: String::new(),
-            label_stored: String::new(),
-        },
-        "h".parse().ok(),
-        "rshift+h".parse().ok(),
-    );
+    impl NudgePositionStorage for DummyPositionStorage {
+        fn nudge_up(&mut self) {
+            unsafe { X += 10.0 };
+        }
+
+        fn nudge_down(&mut self) {
+            unsafe { X -= 10.0 };
+        }
+    }
+
+    let mut position =
+        Position::new(DummyPositionStorage::default(), "h".parse().ok(), "rshift+h".parse().ok());
+
+    let mut nudge =
+        NudgePosition::new(DummyPositionStorage::default(), "[".parse().ok(), "]".parse().ok());
 
     harness_test! {
         move |ui| {
             position.render(ui);
             position.interact(ui);
+            nudge.render(ui);
+            nudge.interact(ui);
         }
     }
 }

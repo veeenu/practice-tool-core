@@ -1,32 +1,32 @@
 # Elden Ring
 
-action_freeze ->
-character_stats -> stats_editor
-cycle_speed -> store_value
-deathcam -> flag with custom Flag impl
-flag -> flag
-group -> group
-item_spawn ->
-multiflag -> flag
-nudge_pos ->
-position -> position
-quitout -> store_value
-runes -> store_value
-savefile_manager -> savefile_manager
-target ->
-warp ->
+- [x] action_freeze -> flag
+- [x] character_stats -> stats_editor
+- [x] cycle_speed -> store_value
+- [x] deathcam -> flag with custom Flag impl
+- [x] flag -> flag
+- [x] group -> group
+- [ ] item_spawn ->
+- [x] multiflag -> flag
+- [x] nudge_pos -> nudge_position
+- [x] position -> position
+- [x] quitout -> store_value
+- [x] runes -> store_value
+- [x] savefile_manager -> savefile_manager
+- [ ] target ->
+- [ ] warp ->
 
 # Dark Souls III
 
-character_stats -> stats_editor
-cycle_speed -> store_value
-flag -> flag
-group -> group
-item_spawn ->
-nudge_pos ->
-open_menu -> store_value
-position -> position
-quitout -> store_value
-savefile_manager -> savefile_manager
-souls -> store_value
-target -> 
+- [x] character_stats -> stats_editor
+- [x] cycle_speed -> store_value
+- [x] flag -> flag
+- [x] group -> group
+- [ ] item_spawn ->
+- [x] nudge_pos -> nudge_position
+- [x] open_menu -> store_value
+- [x] position -> position
+- [x] quitout -> store_value
+- [x] savefile_manager -> savefile_manager
+- [x] souls -> store_value
+- [ ] target -> 
