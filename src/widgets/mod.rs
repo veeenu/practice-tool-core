@@ -2,6 +2,7 @@ use std::sync::mpsc::Sender;
 
 pub mod flag;
 pub mod group;
+pub mod nudge_position;
 pub mod position;
 pub mod savefile_manager;
 pub mod stats_editor;
