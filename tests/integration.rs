@@ -6,7 +6,7 @@ use practice_tool_core::widgets::group::Group;
 use practice_tool_core::widgets::position::{Position, PositionStorage};
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
 use practice_tool_core::widgets::stats_editor::{Datum, Stats, StatsEditor};
-use practice_tool_core::widgets::store_value::{StoreValue, Write as PtWrite};
+use practice_tool_core::widgets::store_value::{ReadWrite, StoreValue};
 use practice_tool_core::widgets::Widget;
 
 mod harness;
@@ -204,21 +204,53 @@ fn test_stats_editor() {
 #[test]
 fn test_store_value() {
     static mut QUITOUTS: usize = 0;
+    static mut SPEED: f32 = 1.0;
 
     struct QuitoutWrite;
-    impl PtWrite for QuitoutWrite {
+    impl ReadWrite for QuitoutWrite {
+        fn read(&mut self) -> bool {
+            true
+        }
+
         fn write(&mut self) {
             unsafe { QUITOUTS += 1 };
         }
+
+        fn label(&self) -> &str {
+            "Quitout"
+        }
     }
 
-    let mut store_value = StoreValue::new(QuitoutWrite, "Quitout", "p".parse().ok());
+    struct CycleSpeed(usize, f32, String);
+    impl ReadWrite for CycleSpeed {
+        fn read(&mut self) -> bool {
+            self.1 = unsafe { SPEED };
+            self.2.clear();
+            write!(self.2, "Speed [{:.1}x]", self.1).ok();
+            true
+        }
+
+        fn write(&mut self) {
+            self.0 = (self.0 + 1) % 3;
+            unsafe { SPEED = [1.0, 2.0, 4.0][self.0] };
+        }
+
+        fn label(&self) -> &str {
+            &self.2
+        }
+    }
+
+    let mut quitout = StoreValue::new(QuitoutWrite, "p".parse().ok());
+    let mut cycle_speed = StoreValue::new(CycleSpeed(0, 1.0, String::new()), "8".parse().ok());
 
     harness_test! {
         move |ui| {
-            store_value.render(ui);
-            store_value.interact(ui);
+            quitout.render(ui);
+            quitout.interact(ui);
             ui.text(format!("Quit out {} times", unsafe { QUITOUTS }));
+
+            cycle_speed.render(ui);
+            cycle_speed.interact(ui);
         }
     }
 }
