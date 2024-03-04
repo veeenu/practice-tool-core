@@ -1,6 +1,6 @@
 # Elden Ring
 
-- [ ] action_freeze ->
+- [x] action_freeze -> flag
 - [x] character_stats -> stats_editor
 - [x] cycle_speed -> store_value
 - [x] deathcam -> flag with custom Flag impl
@@ -8,7 +8,7 @@
 - [x] group -> group
 - [ ] item_spawn ->
 - [x] multiflag -> flag
-- [ ] nudge_pos ->
+- [x] nudge_pos -> nudge_position
 - [x] position -> position
 - [x] quitout -> store_value
 - [x] runes -> store_value
@@ -23,7 +23,7 @@
 - [x] flag -> flag
 - [x] group -> group
 - [ ] item_spawn ->
-- [ ] nudge_pos ->
+- [x] nudge_pos -> nudge_position
 - [x] open_menu -> store_value
 - [x] position -> position
 - [x] quitout -> store_value
