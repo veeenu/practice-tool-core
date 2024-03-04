@@ -6,6 +6,7 @@ use practice_tool_core::widgets::group::Group;
 use practice_tool_core::widgets::position::{Position, PositionStorage};
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
 use practice_tool_core::widgets::stats_editor::{Datum, Stats, StatsEditor};
+use practice_tool_core::widgets::store_value::{StoreValue, Write as PtWrite};
 use practice_tool_core::widgets::Widget;
 
 mod harness;
@@ -190,13 +191,34 @@ fn test_stats_editor() {
         }
     }
 
-    let mut stats_editor =
-        StatsEditor::<CharacterStats>::new(Default::default(), "escape".parse().ok());
+    let mut stats_editor = StatsEditor::new(CharacterStats::default(), "escape".parse().ok());
 
     harness_test! {
         move |ui| {
             stats_editor.render(ui);
             stats_editor.interact(ui);
+        }
+    }
+}
+
+#[test]
+fn test_store_value() {
+    static mut QUITOUTS: usize = 0;
+
+    struct QuitoutWrite;
+    impl PtWrite for QuitoutWrite {
+        fn write(&mut self) {
+            unsafe { QUITOUTS += 1 };
+        }
+    }
+
+    let mut store_value = StoreValue::new(QuitoutWrite, "Quitout", "p".parse().ok());
+
+    harness_test! {
+        move |ui| {
+            store_value.render(ui);
+            store_value.interact(ui);
+            ui.text(format!("Quit out {} times", unsafe { QUITOUTS }));
         }
     }
 }
