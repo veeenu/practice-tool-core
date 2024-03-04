@@ -5,6 +5,7 @@ pub mod group;
 pub mod position;
 pub mod savefile_manager;
 pub mod stats_editor;
+pub mod store_value;
 
 pub(crate) const BUTTON_WIDTH: f32 = 320.;
 pub(crate) const BUTTON_HEIGHT: f32 = 0.;
