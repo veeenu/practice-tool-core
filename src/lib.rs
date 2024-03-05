@@ -2,3 +2,5 @@
 
 pub mod key;
 pub mod widgets;
+
+pub use crossbeam_channel;

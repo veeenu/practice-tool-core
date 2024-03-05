@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use crossbeam_channel::Sender;
 
 pub mod flag;
 pub mod group;
@@ -8,10 +8,10 @@ pub mod savefile_manager;
 pub mod stats_editor;
 pub mod store_value;
 
-pub(crate) const BUTTON_WIDTH: f32 = 320.;
-pub(crate) const BUTTON_HEIGHT: f32 = 0.;
+pub const BUTTON_WIDTH: f32 = 320.;
+pub const BUTTON_HEIGHT: f32 = 0.;
 
-pub(crate) fn scaling_factor(ui: &imgui::Ui) -> f32 {
+pub fn scaling_factor(ui: &imgui::Ui) -> f32 {
     let width = ui.io().display_size[0];
     if width > 2000. {
         1. + 1. / 3.

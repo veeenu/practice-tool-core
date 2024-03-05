@@ -1,5 +1,4 @@
-use std::sync::mpsc::Sender;
-
+use crossbeam_channel::Sender;
 use imgui::sys::{igGetCursorPosX, igGetCursorPosY, igGetWindowPos, igSetNextWindowPos, ImVec2};
 use imgui::Condition;
 

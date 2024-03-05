@@ -30,18 +30,25 @@ pub trait Stats: Send + Sync + 'static {
 
 pub struct StatsEditor<S: Stats> {
     stats: S,
+    key_open: Option<Key>,
+    label_open: String,
     key_close: Option<Key>,
     label_close: String,
 }
 
 impl<S: Stats> StatsEditor<S> {
-    pub fn new(stats: S, key_close: Option<Key>) -> Self {
+    pub fn new(stats: S, key_open: Option<Key>, key_close: Option<Key>) -> Self {
+        let label_open = match key_open {
+            Some(key_open) => format!("Edit stats ({key_open})"),
+            None => "Edit stats".to_string(),
+        };
+
         let label_close = match key_close {
             Some(key_close) => format!("Close ({key_close})"),
             None => "Close".to_string(),
         };
 
-        Self { stats, key_close, label_close }
+        Self { stats, key_close, label_close, key_open, label_open }
     }
 }
 
@@ -57,7 +64,10 @@ impl<S: Stats> Widget for StatsEditor<S> {
             (igGetCursorPosX() + wnd_pos.x, igGetCursorPosY() + wnd_pos.y)
         };
 
-        if ui.button_with_size("Edit stats", [button_width, button_height]) {
+        if ui.button_with_size(&self.label_open, [button_width, button_height])
+            || (self.key_open.map(|k| k.is_pressed(ui)).unwrap_or(false)
+                && !ui.is_any_item_active())
+        {
             self.stats.read();
         }
 
