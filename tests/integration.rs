@@ -212,7 +212,7 @@ fn test_stats_editor() {
         }
     }
 
-    let mut stats_editor = StatsEditor::new(CharacterStats::default(), "escape".parse().ok());
+    let mut stats_editor = StatsEditor::new(CharacterStats::default(), None, "escape".parse().ok());
 
     harness_test! {
         move |ui| {
