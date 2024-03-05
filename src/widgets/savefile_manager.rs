@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Write;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -126,20 +127,24 @@ impl SavefileManagerInner {
     }
 
     fn load_savefile(&mut self) {
-        if let Some(src_path) = self.current_file.as_ref() {
-            if src_path.is_file() {
-                match load_savefile(src_path, &self.savefile_path) {
-                    Ok(()) => self.logs.push(format!(
-                        "Loaded {}/{}",
-                        if self.breadcrumbs == "/" { "" } else { &self.breadcrumbs },
-                        src_path.file_name().unwrap().to_str().unwrap()
-                    )),
-                    Err(e) => self.logs.push(format!("Error loading savefile: {}", e)),
-                };
-            }
-        } else {
+        let Some(src_path) = self.current_file.as_ref() else {
             self.logs.push("No current path! Can't load savefile.".to_string());
+            return;
+        };
+
+        if !src_path.is_file() {
+            self.logs.push("Can't load a directory -- please choose a file.".to_string());
+            return;
         }
+
+        match load_savefile(src_path, &self.savefile_path) {
+            Ok(()) => self.logs.push(format!(
+                "Loaded {}/{}",
+                if self.breadcrumbs == "/" { "" } else { &self.breadcrumbs },
+                src_path.file_name().unwrap().to_str().unwrap()
+            )),
+            Err(e) => self.logs.push(format!("Error loading savefile: {}", e)),
+        };
     }
 
     fn import_savefile(&mut self) {
@@ -156,7 +161,9 @@ impl SavefileManagerInner {
         let mut dst_path = self
             .current_file
             .as_ref()
-            .and_then(|c| c.parent().map(Path::to_path_buf))
+            .and_then(
+                |c| if c.is_dir() { Some(c.clone()) } else { c.parent().map(Path::to_path_buf) },
+            )
             .unwrap_or_else(|| self.file_tree.path().to_path_buf());
         dst_path.push(&self.savefile_name);
 
@@ -221,11 +228,19 @@ impl Widget for SavefileManagerInner {
             ui.child_window(SFML_TAG).size([button_width, 200. * scale]).build(|| {
                 if self.file_tree.render(ui, &mut self.current_file, true) {
                     let root_path = self.file_tree.path();
-                    let child_path = self.current_file.as_ref().unwrap().parent().unwrap();
-                    self.breadcrumbs = format!(
-                        "/{}",
-                        child_path.strip_prefix(root_path).unwrap().to_string_lossy()
-                    );
+                    let child_path = self
+                        .current_file
+                        .as_ref()
+                        .and_then(|f| if f.is_dir() { Some(f.as_path()) } else { f.parent() })
+                        .and_then(|path| path.strip_prefix(root_path).ok());
+
+                    self.breadcrumbs.clear();
+
+                    if let Some(path) = child_path {
+                        write!(self.breadcrumbs, "/{}", path.to_string_lossy()).ok();
+                    } else {
+                        write!(self.breadcrumbs, "/").ok();
+                    }
                 }
             });
 
@@ -294,7 +309,6 @@ impl Widget for SavefileManagerInner {
     }
 
     fn log(&mut self, tx: Sender<String>) {
-        eprintln!("Logging");
         for log in self.logs.drain(..) {
             tx.send(log).ok();
         }
@@ -357,13 +371,12 @@ impl FileTree {
 
                 ui.tree_node_config(file_name)
                     .label::<&str, &str>(file_name)
-                    .flags(if is_current {
+                    .flags(
                         TreeNodeFlags::LEAF
-                            | TreeNodeFlags::SELECTED
                             | TreeNodeFlags::NO_TREE_PUSH_ON_OPEN
-                    } else {
-                        TreeNodeFlags::LEAF | TreeNodeFlags::NO_TREE_PUSH_ON_OPEN
-                    })
+                            | TreeNodeFlags::SPAN_AVAIL_WIDTH,
+                    )
+                    .selected(is_current)
                     .build(|| {});
 
                 unsafe { igIndent(igGetTreeNodeToLabelSpacing()) };
@@ -375,26 +388,33 @@ impl FileTree {
                     false
                 }
             },
-            FileTree::Directory { children, .. } => {
+            FileTree::Directory { children, path } => {
+                let is_current = current_file.as_ref().map(|f| f == path).unwrap_or(false);
                 let file_name = self.file_name();
                 let mut update_breadcrumbs = false;
 
-                let mut node_config = ui.tree_node_config(file_name);
-
-                if is_top {
-                    node_config = node_config.opened(true, Condition::Always);
-                }
-
-                node_config
+                let node = ui
+                    .tree_node_config(file_name)
+                    .default_open(is_top)
                     .label::<&str, &str>(file_name)
                     .flags(TreeNodeFlags::SPAN_AVAIL_WIDTH)
+                    .selected(is_current)
                     .build(|| {
+                        if ui.is_item_clicked() {
+                            *current_file = Some(path.clone());
+                        }
+
                         for node in children {
                             update_breadcrumbs |= node.render(ui, current_file, false);
                         }
                     });
 
-                update_breadcrumbs
+                if node.is_none() && ui.is_item_clicked() {
+                    *current_file = Some(path.clone());
+                    true
+                } else {
+                    update_breadcrumbs
+                }
             },
         }
     }
