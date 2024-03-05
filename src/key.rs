@@ -373,6 +373,10 @@ impl Key {
             && self.modifiers.iter().all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
             && ModifierState::from(ui) == ModifierState::from(self.modifiers)
     }
+
+    pub fn is_pressed_unmodified(&self, ui: &Ui) -> bool {
+        ui.is_key_pressed(self.key)
+    }
 }
 
 #[cfg(test)]
