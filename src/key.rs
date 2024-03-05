@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use imgui::Ui;
+use serde::Deserialize;
 
 const REPR_MAP: &[(imgui::Key, &str)] = &[
     (imgui::Key::Tab, "tab"),
@@ -27,16 +28,16 @@ const REPR_MAP: &[(imgui::Key, &str)] = &[
     (imgui::Key::RightAlt, "ralt"),
     (imgui::Key::RightSuper, "rsuper"),
     (imgui::Key::Menu, "menu"),
-    (imgui::Key::Alpha0, "alpha0"),
-    (imgui::Key::Alpha1, "alpha1"),
-    (imgui::Key::Alpha2, "alpha2"),
-    (imgui::Key::Alpha3, "alpha3"),
-    (imgui::Key::Alpha4, "alpha4"),
-    (imgui::Key::Alpha5, "alpha5"),
-    (imgui::Key::Alpha6, "alpha6"),
-    (imgui::Key::Alpha7, "alpha7"),
-    (imgui::Key::Alpha8, "alpha8"),
-    (imgui::Key::Alpha9, "alpha9"),
+    (imgui::Key::Alpha0, "0"),
+    (imgui::Key::Alpha1, "1"),
+    (imgui::Key::Alpha2, "2"),
+    (imgui::Key::Alpha3, "3"),
+    (imgui::Key::Alpha4, "4"),
+    (imgui::Key::Alpha5, "5"),
+    (imgui::Key::Alpha6, "6"),
+    (imgui::Key::Alpha7, "7"),
+    (imgui::Key::Alpha8, "8"),
+    (imgui::Key::Alpha9, "9"),
     (imgui::Key::A, "a"),
     (imgui::Key::B, "b"),
     (imgui::Key::C, "c"),
@@ -91,16 +92,16 @@ const REPR_MAP: &[(imgui::Key, &str)] = &[
     (imgui::Key::NumLock, "numlock"),
     (imgui::Key::PrintScreen, "printscreen"),
     (imgui::Key::Pause, "pause"),
-    (imgui::Key::Keypad0, "0"),
-    (imgui::Key::Keypad1, "1"),
-    (imgui::Key::Keypad2, "2"),
-    (imgui::Key::Keypad3, "3"),
-    (imgui::Key::Keypad4, "4"),
-    (imgui::Key::Keypad5, "5"),
-    (imgui::Key::Keypad6, "6"),
-    (imgui::Key::Keypad7, "7"),
-    (imgui::Key::Keypad8, "8"),
-    (imgui::Key::Keypad9, "9"),
+    (imgui::Key::Keypad0, "kp0"),
+    (imgui::Key::Keypad1, "kp1"),
+    (imgui::Key::Keypad2, "kp2"),
+    (imgui::Key::Keypad3, "kp3"),
+    (imgui::Key::Keypad4, "kp4"),
+    (imgui::Key::Keypad5, "kp5"),
+    (imgui::Key::Keypad6, "kp6"),
+    (imgui::Key::Keypad7, "kp7"),
+    (imgui::Key::Keypad8, "kp8"),
+    (imgui::Key::Keypad9, "kp9"),
     (imgui::Key::KeypadDecimal, "kpdecimal"),
     (imgui::Key::KeypadDivide, "kpdivide"),
     (imgui::Key::KeypadMultiply, "kpmultiply"),
@@ -213,13 +214,13 @@ impl From<Modifier> for imgui::Key {
 }
 
 impl FromStr for Modifier {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         MOD_REPR_MAP
             .iter()
             .find_map(|&(key, val)| if val == s { Some(key) } else { None })
-            .ok_or(())
+            .ok_or_else(|| format!("Could not find modifier: \"{s}\""))
     }
 }
 
@@ -288,7 +289,8 @@ impl From<[Option<Modifier>; 3]> for ModifierState {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(try_from = "String")]
 pub struct Key {
     key: imgui::Key,
     modifiers: [Option<Modifier>; 3],
@@ -309,17 +311,18 @@ impl std::fmt::Display for Key {
     }
 }
 
-impl FromStr for Key {
-    type Err = ();
+impl TryFrom<&str> for Key {
+    type Error = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
         let mut chunks = s.split('+').rev();
-        let key_chunk = chunks.next().ok_or(())?;
+        let key_chunk =
+            chunks.next().ok_or_else(|| format!("Could not parse key: \"{s}\""))?.to_lowercase();
 
         let key = REPR_MAP
             .iter()
             .find_map(|&(key, val)| if val == key_chunk { Some(key) } else { None })
-            .ok_or(())?;
+            .ok_or_else(|| format!("Could not find key: \"{key_chunk}\""))?;
 
         let mut modifier_chunks = chunks.rev().map(Modifier::from_str);
 
@@ -335,6 +338,22 @@ impl FromStr for Key {
         }
 
         Ok(Self { key, modifiers })
+    }
+}
+
+impl TryFrom<String> for Key {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.as_str().try_into()
+    }
+}
+
+impl FromStr for Key {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.try_into()
     }
 }
 

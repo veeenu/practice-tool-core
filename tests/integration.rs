@@ -71,10 +71,18 @@ fn test_savefile_manager() {
         SavefileManager::new(Some("ctrl+o".parse().unwrap()), tmp_dir.path().join("ER0000.sl2"));
     let mut savefile_manager = (tmp_dir, savefile_manager);
 
+    let (tx, rx) = crossbeam_channel::unbounded();
+
     harness_test! {
         move |ui| {
             let file_path = savefile_manager.0.path().join("ER0000.sl2");
             savefile_manager.1.render(ui);
+            savefile_manager.1.log(tx.clone());
+
+            for log in rx.try_iter() {
+                eprintln!("Received log {log}");
+            }
+
             ui.text(format!("File contains: {}", fs::read_to_string(file_path).unwrap()));
         }
     };

@@ -24,7 +24,7 @@ impl<P: PositionStorage> Position<P> {
         let label_save =
             key_save.map(|k| format!("Save ({k})")).unwrap_or_else(|| "Save".to_string());
 
-        Self { storage, key_read: key_load, key_write: key_save, label_load, label_save }
+        Self { storage, key_write: key_load, key_read: key_save, label_load, label_save }
     }
 
     pub fn save_position(&mut self) {
@@ -41,7 +41,7 @@ impl<S: PositionStorage> Widget for Position<S> {
         let valid = self.storage.is_valid();
 
         let button_width = BUTTON_WIDTH * scaling_factor(ui);
-        let _token = ui.begin_disabled(valid);
+        let _token = ui.begin_disabled(!valid);
 
         if ui.button_with_size(&self.label_load, [button_width * 0.33 - 4., BUTTON_HEIGHT]) {
             self.load_position();

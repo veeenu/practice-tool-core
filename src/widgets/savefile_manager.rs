@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::mpsc::Sender;
 
+use crossbeam_channel::Sender;
 use imgui::sys::{
     igGetCursorPosX, igGetCursorPosY, igGetTreeNodeToLabelSpacing, igGetWindowPos, igIndent,
     igSetNextWindowPos, igUnindent, ImVec2,
@@ -19,8 +19,8 @@ const SFML_TAG: &str = "##savefile-manager-list";
 pub struct SavefileManager(Box<dyn Widget>);
 
 impl SavefileManager {
-    pub fn new(key_load: Option<Key>, savefile_path: PathBuf) -> Self {
-        match SavefileManagerInner::new(key_load, savefile_path) {
+    pub fn new(key_load: Option<Key>, key_close: Option<Key>, savefile_path: PathBuf) -> Self {
+        match SavefileManagerInner::new(key_load, key_close, savefile_path) {
             Ok(savefile_manager) => SavefileManager(Box::new(savefile_manager)),
             Err(e) => SavefileManager(Box::new(ErroredSavefileManager(e))),
         }
@@ -30,6 +30,34 @@ impl SavefileManager {
 impl Widget for SavefileManager {
     fn render(&mut self, ui: &imgui::Ui) {
         self.0.render(ui)
+    }
+
+    fn render_closed(&mut self, ui: &imgui::Ui) {
+        self.0.render_closed(ui)
+    }
+
+    fn interact(&mut self, ui: &imgui::Ui) {
+        self.0.interact(ui)
+    }
+
+    fn cursor_down(&mut self) {
+        self.0.cursor_down()
+    }
+
+    fn cursor_up(&mut self) {
+        self.0.cursor_up()
+    }
+
+    fn want_enter(&mut self) -> bool {
+        self.0.want_enter()
+    }
+
+    fn want_exit(&mut self) -> bool {
+        self.0.want_exit()
+    }
+
+    fn log(&mut self, tx: Sender<String>) {
+        self.0.log(tx)
     }
 }
 
@@ -44,8 +72,10 @@ impl Widget for ErroredSavefileManager {
 
 #[derive(Debug)]
 struct SavefileManagerInner {
-    label: String,
+    label_load: String,
+    label_close: String,
     key_load: Option<Key>,
+    key_close: Option<Key>,
     file_tree: FileTree,
     savefile_path: PathBuf,
     current_file: Option<PathBuf>,
@@ -56,10 +86,19 @@ struct SavefileManagerInner {
 }
 
 impl SavefileManagerInner {
-    fn new(key_load: Option<Key>, savefile_path: PathBuf) -> Result<Self, String> {
-        let label = match key_load {
+    fn new(
+        key_load: Option<Key>,
+        key_close: Option<Key>,
+        savefile_path: PathBuf,
+    ) -> Result<Self, String> {
+        let label_load = match key_load {
             Some(key_load) => format!("Load savefile ({key_load})"),
             None => "Load savefile".to_string(),
+        };
+
+        let label_close = match key_close {
+            Some(key_close) => format!("Close ({key_close})"),
+            None => "Close".to_string(),
         };
 
         let Some(savefile_path_parent) = savefile_path.parent() else {
@@ -72,8 +111,10 @@ impl SavefileManagerInner {
             .map_err(|e| format!("Couldn't construct file browser: {}", e))?;
 
         Ok(SavefileManagerInner {
-            label,
+            label_load,
+            label_close,
             key_load,
+            key_close,
             file_tree,
             current_file: None,
             savefile_path,
@@ -147,7 +188,7 @@ impl Widget for SavefileManagerInner {
             (igGetCursorPosX() + wnd_pos.x, igGetCursorPosY() + wnd_pos.y)
         };
 
-        if ui.button_with_size(&self.label, [button_width, BUTTON_HEIGHT]) {
+        if ui.button_with_size(&self.label_load, [button_width, BUTTON_HEIGHT]) {
             ui.open_popup(SFM_TAG);
             if let Err(e) = self.file_tree.refresh() {
                 self.logs.push(format!("Couldn't refresh file tree: {e}"));
@@ -178,7 +219,7 @@ impl Widget for SavefileManagerInner {
                 });
 
             ui.child_window(SFML_TAG).size([button_width, 200. * scale]).build(|| {
-                if self.file_tree.render(ui, &mut self.current_file) {
+                if self.file_tree.render(ui, &mut self.current_file, true) {
                     let root_path = self.file_tree.path();
                     let child_path = self.current_file.as_ref().unwrap().parent().unwrap();
                     self.breadcrumbs = format!(
@@ -188,7 +229,7 @@ impl Widget for SavefileManagerInner {
                 }
             });
 
-            if ui.button_with_size(&self.label, [button_width, BUTTON_HEIGHT])
+            if ui.button_with_size(&self.label_load, [button_width, BUTTON_HEIGHT])
                 || self.key_load.map(|key| key.is_pressed(ui)).unwrap_or(false)
             {
                 self.load_savefile();
@@ -230,7 +271,10 @@ impl Widget for SavefileManagerInner {
                 };
             }
 
-            if ui.button_with_size("Close", [button_width, BUTTON_HEIGHT]) {
+            if ui.button_with_size(&self.label_close, [button_width, BUTTON_HEIGHT])
+                || (!ui.is_any_item_active()
+                    && self.key_close.map(|k| k.is_pressed(ui)).unwrap_or(false))
+            {
                 ui.close_current_popup();
                 if let Err(e) = self.file_tree.refresh() {
                     self.logs.push(format!("Couldn't refresh file tree: {e}"));
@@ -239,7 +283,18 @@ impl Widget for SavefileManagerInner {
         }
     }
 
+    fn interact(&mut self, ui: &imgui::Ui) {
+        if ui.is_any_item_active() {
+            return;
+        }
+
+        if self.key_load.map(|k| k.is_pressed(ui)).unwrap_or(false) {
+            self.load_savefile();
+        }
+    }
+
     fn log(&mut self, tx: Sender<String>) {
+        eprintln!("Logging");
         for log in self.logs.drain(..) {
             tx.send(log).ok();
         }
@@ -292,13 +347,14 @@ impl FileTree {
         }
     }
 
-    fn render(&self, ui: &Ui, current_file: &mut Option<PathBuf>) -> bool {
+    fn render(&self, ui: &Ui, current_file: &mut Option<PathBuf>, is_top: bool) -> bool {
         match self {
             FileTree::File { path } => {
                 let is_current = current_file.as_ref().map(|f| f == path).unwrap_or(false);
                 let file_name = self.file_name();
 
                 unsafe { igUnindent(igGetTreeNodeToLabelSpacing()) };
+
                 ui.tree_node_config(file_name)
                     .label::<&str, &str>(file_name)
                     .flags(if is_current {
@@ -323,12 +379,18 @@ impl FileTree {
                 let file_name = self.file_name();
                 let mut update_breadcrumbs = false;
 
-                ui.tree_node_config(file_name)
+                let mut node_config = ui.tree_node_config(file_name);
+
+                if is_top {
+                    node_config = node_config.opened(true, Condition::Always);
+                }
+
+                node_config
                     .label::<&str, &str>(file_name)
                     .flags(TreeNodeFlags::SPAN_AVAIL_WIDTH)
                     .build(|| {
                         for node in children {
-                            update_breadcrumbs |= node.render(ui, current_file);
+                            update_breadcrumbs |= node.render(ui, current_file, false);
                         }
                     });
 
