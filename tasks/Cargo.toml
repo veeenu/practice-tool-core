@@ -1,0 +1,19 @@
+[package]
+name = "practice-tool-tasks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+widestring = "0.5.1"
+zip = "0.6"
+regex = "1.5.5"
+serde_json = "1.0.73"
+rayon = "1.5.3"
+heck = "0.4.0"
+textwrap = "0.15.0"
+dotenv = "0.15.0"
+pelite = "0.10.0"
+once_cell.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+anyhow = "1.0.80"
