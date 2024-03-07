@@ -2,8 +2,8 @@ use crate::key::Key;
 use crate::widgets::{scaling_factor, Widget, BUTTON_HEIGHT, BUTTON_WIDTH};
 
 pub trait PositionStorage: Send + Sync + 'static {
-    fn read(&mut self);
-    fn write(&mut self);
+    fn save(&mut self);
+    fn load(&mut self);
     fn display_current(&mut self) -> &str;
     fn display_stored(&mut self) -> &str;
     fn is_valid(&self) -> bool;
@@ -28,11 +28,11 @@ impl<P: PositionStorage> Position<P> {
     }
 
     pub fn save_position(&mut self) {
-        self.storage.write();
+        self.storage.save();
     }
 
     pub fn load_position(&mut self) {
-        self.storage.read();
+        self.storage.load();
     }
 }
 
@@ -63,11 +63,11 @@ impl<S: PositionStorage> Widget for Position<S> {
         }
 
         if self.key_write.map(|k| k.is_pressed(ui)).unwrap_or(false) {
-            self.save_position();
+            self.load_position();
         }
 
         if self.key_read.map(|k| k.is_pressed(ui)).unwrap_or(false) {
-            self.load_position();
+            self.save_position();
         }
     }
 }
