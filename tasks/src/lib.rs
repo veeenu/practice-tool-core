@@ -9,6 +9,7 @@ use std::process::Command;
 pub mod codegen;
 mod dist;
 mod file_install;
+pub mod params;
 
 use anyhow::{Context, Result};
 pub use dist::Distribution;
