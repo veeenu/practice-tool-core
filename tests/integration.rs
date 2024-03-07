@@ -116,12 +116,12 @@ fn test_position() {
     }
 
     impl PositionStorage for DummyPositionStorage {
-        fn read(&mut self) {
-            unsafe { X = self.stored };
+        fn save(&mut self) {
+            self.stored = unsafe { X };
         }
 
-        fn write(&mut self) {
-            self.stored = unsafe { X };
+        fn load(&mut self) {
+            unsafe { X = self.stored };
         }
 
         fn display_current(&mut self) -> &str {
