@@ -40,14 +40,20 @@ fn naive_search(bytes: &[u8], pattern: &[Option<u8>]) -> Option<usize> {
     })
 }
 
+/// Trait that describes strategies for retrieving data from AoB scans.
 pub trait Aob {
+    /// Find the AoB anywhere in the PE file.
     fn find(&self, pe_file: &PeFile) -> Option<(&str, usize)>;
+    /// The AoB name.
     fn name(&self) -> &str;
+    /// Whether this is an offset from the module base address.
+    fn add_base(&self) -> bool;
 }
 
 struct AobDirect<'a> {
     name: &'a str,
     aobs: &'a [&'a str],
+    add_base: bool,
 }
 
 impl Aob for AobDirect<'_> {
@@ -71,12 +77,17 @@ impl Aob for AobDirect<'_> {
     fn name(&self) -> &str {
         self.name
     }
+
+    fn add_base(&self) -> bool {
+        self.add_base
+    }
 }
 
 struct AobIndirect<'a> {
     name: &'a str,
     aobs: &'a [&'a str],
     offset: usize,
+    add_base: bool,
 }
 
 impl Aob for AobIndirect<'_> {
@@ -104,6 +115,10 @@ impl Aob for AobIndirect<'_> {
     fn name(&self) -> &str {
         self.name
     }
+
+    fn add_base(&self) -> bool {
+        self.add_base
+    }
 }
 
 struct AobIndirectTwice<'a> {
@@ -111,6 +126,7 @@ struct AobIndirectTwice<'a> {
     aobs: &'a [&'a str],
     offset_from_pattern: usize,
     offset_from_offset: usize,
+    add_base: bool,
 }
 
 impl Aob for AobIndirectTwice<'_> {
@@ -144,14 +160,23 @@ impl Aob for AobIndirectTwice<'_> {
     fn name(&self) -> &str {
         self.name
     }
+
+    fn add_base(&self) -> bool {
+        self.add_base
+    }
 }
 
-pub fn aob_direct<'a>(name: &'a str, aobs: &'a [&'a str]) -> Box<dyn Aob + 'a> {
-    Box::new(AobDirect { name, aobs })
+pub fn aob_direct<'a>(name: &'a str, aobs: &'a [&'a str], add_base: bool) -> Box<dyn Aob + 'a> {
+    Box::new(AobDirect { name, aobs, add_base })
 }
 
-pub fn aob_indirect<'a>(name: &'a str, aobs: &'a [&'a str], offset: usize) -> Box<dyn Aob + 'a> {
-    Box::new(AobIndirect { name, aobs, offset })
+pub fn aob_indirect<'a>(
+    name: &'a str,
+    aobs: &'a [&'a str],
+    offset: usize,
+    add_base: bool,
+) -> Box<dyn Aob + 'a> {
+    Box::new(AobIndirect { name, aobs, offset, add_base })
 }
 
 pub fn aob_indirect_twice<'a>(
@@ -159,8 +184,9 @@ pub fn aob_indirect_twice<'a>(
     aobs: &'a [&'a str],
     offset_from_pattern: usize,
     offset_from_offset: usize,
+    add_base: bool,
 ) -> Box<dyn Aob + 'a> {
-    Box::new(AobIndirectTwice { name, aobs, offset_from_pattern, offset_from_offset })
+    Box::new(AobIndirectTwice { name, aobs, offset_from_pattern, offset_from_offset, add_base })
 }
 
 fn find_aobs<'a>(pe_file: &PeFile, aobs: &'a [Box<dyn Aob>]) -> Vec<(&'a str, usize)> {
@@ -172,8 +198,6 @@ fn find_aobs<'a>(pe_file: &PeFile, aobs: &'a [Box<dyn Aob>]) -> Vec<(&'a str, us
 
 /// Generate the `BaseAddresses` struct.
 fn codegen_base_addresses_struct(aobs: &[Box<dyn Aob>]) -> String {
-    let names = aobs.iter().map(|a| a.name()).collect::<Vec<_>>();
-
     let mut generated = String::new();
 
     generated.push_str("// **********************************\n");
@@ -183,8 +207,8 @@ fn codegen_base_addresses_struct(aobs: &[Box<dyn Aob>]) -> String {
     generated.push_str("#[derive(Debug)]\n");
     generated.push_str("pub struct BaseAddresses {\n");
 
-    for name in &names {
-        generated.push_str(&format!("    pub {}: usize,\n", AsSnakeCase(name)));
+    for aob in aobs {
+        generated.push_str(&format!("    pub {}: usize,\n", AsSnakeCase(aob.name())));
     }
 
     generated.push_str("}\n\n");
@@ -192,12 +216,20 @@ fn codegen_base_addresses_struct(aobs: &[Box<dyn Aob>]) -> String {
     generated.push_str("    pub fn with_module_base_addr(self, base: usize) -> BaseAddresses {\n");
     generated.push_str("        BaseAddresses {\n");
 
-    for name in &names {
-        generated.push_str(&format!(
-            "            {}: self.{} + base,\n",
-            AsSnakeCase(name),
-            AsSnakeCase(name)
-        ));
+    for aob in aobs {
+        if aob.add_base() {
+            generated.push_str(&format!(
+                "            {}: self.{} + base,\n",
+                AsSnakeCase(aob.name()),
+                AsSnakeCase(aob.name())
+            ));
+        } else {
+            generated.push_str(&format!(
+                "            {}: self.{},\n",
+                AsSnakeCase(aob.name()),
+                AsSnakeCase(aob.name())
+            ));
+        }
     }
     generated.push_str("        }\n    }\n}\n\n");
     generated

@@ -244,9 +244,7 @@ impl Widget for SavefileManagerInner {
                 }
             });
 
-            if ui.button_with_size(&self.label_load, [button_width, BUTTON_HEIGHT])
-                || self.key_load.map(|key| key.is_pressed(ui)).unwrap_or(false)
-            {
+            if ui.button_with_size(&self.label_load, [button_width, BUTTON_HEIGHT]) {
                 self.load_savefile();
             }
 
