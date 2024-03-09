@@ -297,10 +297,6 @@ impl Widget for SavefileManagerInner {
     }
 
     fn interact(&mut self, ui: &imgui::Ui) {
-        if ui.is_any_item_active() {
-            return;
-        }
-
         if self.key_load.map(|k| k.is_pressed(ui)).unwrap_or(false) {
             self.load_savefile();
         }
