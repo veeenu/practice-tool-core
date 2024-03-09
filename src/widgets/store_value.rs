@@ -49,10 +49,6 @@ impl<W: ReadWrite> Widget for StoreValue<W> {
     }
 
     fn interact(&mut self, ui: &imgui::Ui) {
-        if ui.is_any_item_active() {
-            return;
-        }
-
         if self.key.map(|key| key.is_pressed(ui)).unwrap_or(false) {
             self.readwrite.write();
         }

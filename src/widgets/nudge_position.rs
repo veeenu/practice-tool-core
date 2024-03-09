@@ -49,10 +49,6 @@ impl<N: NudgePositionStorage> Widget for NudgePosition<N> {
     }
 
     fn interact(&mut self, ui: &imgui::Ui) {
-        if ui.is_any_item_active() {
-            return;
-        }
-
         if self.key_nudge_up.map(|k| k.is_pressed(ui)).unwrap_or(false) {
             self.nudge_position.nudge_up();
         }

@@ -57,6 +57,10 @@ impl Widget for Group {
             .begin_popup()
         {
             for widget in &mut self.children {
+                widget.interact(ui);
+            }
+
+            for widget in &mut self.children {
                 widget.render(ui);
             }
 

@@ -15,6 +15,7 @@ pub struct Position<P: PositionStorage> {
     key_write: Option<Key>,
     label_load: String,
     label_save: String,
+    logs: Vec<String>,
 }
 
 impl<P: PositionStorage> Position<P> {
@@ -24,15 +25,24 @@ impl<P: PositionStorage> Position<P> {
         let label_save =
             key_save.map(|k| format!("Save ({k})")).unwrap_or_else(|| "Save".to_string());
 
-        Self { storage, key_write: key_load, key_read: key_save, label_load, label_save }
+        Self {
+            storage,
+            key_write: key_load,
+            key_read: key_save,
+            label_load,
+            label_save,
+            logs: Vec::new(),
+        }
     }
 
     pub fn save_position(&mut self) {
         self.storage.save();
+        self.logs.push(format!("Saved position  {}", self.storage.display_stored()));
     }
 
     pub fn load_position(&mut self) {
         self.storage.load();
+        self.logs.push(format!("Loaded position {}", self.storage.display_stored()));
     }
 }
 
@@ -58,10 +68,6 @@ impl<S: PositionStorage> Widget for Position<S> {
     }
 
     fn interact(&mut self, ui: &imgui::Ui) {
-        if ui.is_any_item_active() {
-            return;
-        }
-
         if self.key_write.map(|k| k.is_pressed(ui)).unwrap_or(false) {
             self.load_position();
         }
@@ -69,5 +75,11 @@ impl<S: PositionStorage> Widget for Position<S> {
         if self.key_read.map(|k| k.is_pressed(ui)).unwrap_or(false) {
             self.save_position();
         }
+    }
+
+    fn log(&mut self, tx: crossbeam_channel::Sender<String>) {
+        self.logs.drain(..).for_each(|log| {
+            tx.send(log).ok();
+        });
     }
 }
