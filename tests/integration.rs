@@ -252,6 +252,7 @@ fn test_store_value() {
         }
 
         fn write(&mut self) {
+            println!("Writing");
             self.0 = (self.0 + 1) % 3;
             unsafe { SPEED = [1.0, 2.0, 4.0][self.0] };
         }
@@ -262,7 +263,7 @@ fn test_store_value() {
     }
 
     let mut quitout = StoreValue::new(QuitoutWrite, "p".parse().ok());
-    let mut cycle_speed = StoreValue::new(CycleSpeed(0, 1.0, String::new()), "8".parse().ok());
+    let mut cycle_speed = StoreValue::new(CycleSpeed(0, 1.0, String::new()), "kp8".parse().ok());
 
     harness_test! {
         move |ui| {
