@@ -265,23 +265,27 @@ impl From<&Ui> for ModifierState {
 
 impl From<[Option<Modifier>; 3]> for ModifierState {
     fn from(value: [Option<Modifier>; 3]) -> Self {
-        let mut modifier_state =
-            Self { key_ctrl: false, key_shift: false, key_alt: false, key_super: false };
+        let mut modifier_state = Self {
+            key_ctrl: false,
+            key_shift: false,
+            key_alt: false,
+            key_super: false,
+        };
 
         for modifier in value.into_iter().flatten() {
             match modifier {
                 Modifier::LeftCtrl | Modifier::RightCtrl | Modifier::ModCtrl => {
                     modifier_state.key_ctrl = true
-                },
+                }
                 Modifier::LeftShift | Modifier::RightShift | Modifier::ModShift => {
                     modifier_state.key_shift = true
-                },
+                }
                 Modifier::LeftAlt | Modifier::RightAlt | Modifier::ModAlt => {
                     modifier_state.key_alt = true
-                },
+                }
                 Modifier::LeftSuper | Modifier::RightSuper | Modifier::ModSuper => {
                     modifier_state.key_super = true
-                },
+                }
             }
         }
 
@@ -316,8 +320,10 @@ impl TryFrom<&str> for Key {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let mut chunks = s.split('+').rev();
-        let key_chunk =
-            chunks.next().ok_or_else(|| format!("Could not parse key: \"{s}\""))?.to_lowercase();
+        let key_chunk = chunks
+            .next()
+            .ok_or_else(|| format!("Could not parse key: \"{s}\""))?
+            .to_lowercase();
 
         let key = REPR_MAP
             .iter()
@@ -360,7 +366,10 @@ impl FromStr for Key {
 impl Key {
     pub fn is_down(&self, ui: &Ui) -> bool {
         ui.is_key_down(self.key)
-            && self.modifiers.iter().all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
+            && self
+                .modifiers
+                .iter()
+                .all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
             && ModifierState::from(ui) == ModifierState::from(self.modifiers)
     }
 
@@ -370,7 +379,10 @@ impl Key {
 
     pub fn is_pressed(&self, ui: &Ui) -> bool {
         ui.is_key_pressed(self.key)
-            && self.modifiers.iter().all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
+            && self
+                .modifiers
+                .iter()
+                .all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
             && ModifierState::from(ui) == ModifierState::from(self.modifiers)
     }
 }

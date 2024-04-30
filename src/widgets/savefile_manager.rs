@@ -128,19 +128,25 @@ impl SavefileManagerInner {
 
     fn load_savefile(&mut self) {
         let Some(src_path) = self.current_file.as_ref() else {
-            self.logs.push("No current path! Can't load savefile.".to_string());
+            self.logs
+                .push("No current path! Can't load savefile.".to_string());
             return;
         };
 
         if !src_path.is_file() {
-            self.logs.push("Can't load a directory -- please choose a file.".to_string());
+            self.logs
+                .push("Can't load a directory -- please choose a file.".to_string());
             return;
         }
 
         match load_savefile(src_path, &self.savefile_path) {
             Ok(()) => self.logs.push(format!(
                 "Loaded {}/{}",
-                if self.breadcrumbs == "/" { "" } else { &self.breadcrumbs },
+                if self.breadcrumbs == "/" {
+                    ""
+                } else {
+                    &self.breadcrumbs
+                },
                 src_path.file_name().unwrap().to_str().unwrap()
             )),
             Err(e) => self.logs.push(format!("Error loading savefile: {}", e)),
@@ -149,21 +155,27 @@ impl SavefileManagerInner {
 
     fn import_savefile(&mut self) {
         if self.savefile_name.is_empty() {
-            self.logs.push(String::from("Cannot save to empty filename"));
+            self.logs
+                .push(String::from("Cannot save to empty filename"));
             return;
         }
 
         if self.savefile_name.contains('/') || self.savefile_name.contains('\\') {
-            self.logs.push(String::from("Savefile name cannot contain path separator"));
+            self.logs
+                .push(String::from("Savefile name cannot contain path separator"));
             return;
         }
 
         let mut dst_path = self
             .current_file
             .as_ref()
-            .and_then(
-                |c| if c.is_dir() { Some(c.clone()) } else { c.parent().map(Path::to_path_buf) },
-            )
+            .and_then(|c| {
+                if c.is_dir() {
+                    Some(c.clone())
+                } else {
+                    c.parent().map(Path::to_path_buf)
+                }
+            })
             .unwrap_or_else(|| self.file_tree.path().to_path_buf());
         dst_path.push(&self.savefile_name);
 
@@ -175,10 +187,14 @@ impl SavefileManagerInner {
                 }
                 self.logs.push(format!(
                     "Imported {}/{}",
-                    if self.breadcrumbs == "/" { "" } else { &self.breadcrumbs },
+                    if self.breadcrumbs == "/" {
+                        ""
+                    } else {
+                        &self.breadcrumbs
+                    },
                     dst_path.file_name().unwrap().to_str().unwrap()
                 ))
-            },
+            }
             Err(e) => self.logs.push(format!("Error importing savefile: {}", e)),
         };
     }
@@ -225,24 +241,32 @@ impl Widget for SavefileManagerInner {
                     ui.set_scroll_x(ui.scroll_max_x());
                 });
 
-            ui.child_window(SFML_TAG).size([button_width, 200. * scale]).build(|| {
-                if self.file_tree.render(ui, &mut self.current_file, true) {
-                    let root_path = self.file_tree.path();
-                    let child_path = self
-                        .current_file
-                        .as_ref()
-                        .and_then(|f| if f.is_dir() { Some(f.as_path()) } else { f.parent() })
-                        .and_then(|path| path.strip_prefix(root_path).ok());
+            ui.child_window(SFML_TAG)
+                .size([button_width, 200. * scale])
+                .build(|| {
+                    if self.file_tree.render(ui, &mut self.current_file, true) {
+                        let root_path = self.file_tree.path();
+                        let child_path = self
+                            .current_file
+                            .as_ref()
+                            .and_then(|f| {
+                                if f.is_dir() {
+                                    Some(f.as_path())
+                                } else {
+                                    f.parent()
+                                }
+                            })
+                            .and_then(|path| path.strip_prefix(root_path).ok());
 
-                    self.breadcrumbs.clear();
+                        self.breadcrumbs.clear();
 
-                    if let Some(path) = child_path {
-                        write!(self.breadcrumbs, "/{}", path.to_string_lossy()).ok();
-                    } else {
-                        write!(self.breadcrumbs, "/").ok();
+                        if let Some(path) = child_path {
+                            write!(self.breadcrumbs, "/{}", path.to_string_lossy()).ok();
+                        } else {
+                            write!(self.breadcrumbs, "/").ok();
+                        }
                     }
-                }
-            });
+                });
 
             if ui.button_with_size(&self.label_load, [button_width, BUTTON_HEIGHT]) {
                 self.load_savefile();
@@ -252,7 +276,9 @@ impl Widget for SavefileManagerInner {
 
             {
                 let _tok = ui.push_item_width(button_width * 174. / 240.);
-                ui.input_text("##savefile_name", &mut self.savefile_name).hint("file name").build();
+                ui.input_text("##savefile_name", &mut self.savefile_name)
+                    .hint("file name")
+                    .build();
                 self.input_edited = ui.is_item_active();
             }
 
@@ -271,7 +297,11 @@ impl Widget for SavefileManagerInner {
                     .map(|p| p as &Path)
                     .unwrap_or_else(|| self.file_tree.path());
 
-                let path = if path.is_dir() { path } else { path.parent().unwrap() };
+                let path = if path.is_dir() {
+                    path
+                } else {
+                    path.parent().unwrap()
+                };
 
                 if let Err(e) = Command::new("explorer.exe")
                     .stdin(Stdio::null())
@@ -311,8 +341,13 @@ impl Widget for SavefileManagerInner {
 
 #[derive(Debug, PartialEq, Eq)]
 enum FileTree {
-    File { path: PathBuf },
-    Directory { path: PathBuf, children: Vec<FileTree> },
+    File {
+        path: PathBuf,
+    },
+    Directory {
+        path: PathBuf,
+        children: Vec<FileTree>,
+    },
 }
 
 impl FileTree {
@@ -345,7 +380,7 @@ impl FileTree {
         match self {
             FileTree::File { path } | FileTree::Directory { path, .. } => {
                 path.file_name().unwrap().to_str().unwrap()
-            },
+            }
         }
     }
 
@@ -381,7 +416,7 @@ impl FileTree {
                 } else {
                     false
                 }
-            },
+            }
             FileTree::Directory { children, path } => {
                 let is_current = current_file.as_ref().map(|f| f == path).unwrap_or(false);
                 let file_name = self.file_name();
@@ -409,7 +444,7 @@ impl FileTree {
                 } else {
                     update_breadcrumbs
                 }
-            },
+            }
         }
     }
 }

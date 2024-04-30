@@ -23,7 +23,11 @@ impl<W: ReadWrite> StoreValue<W> {
             None => label.to_string(),
         };
 
-        Self { readwrite: write, label, key }
+        Self {
+            readwrite: write,
+            label,
+            key,
+        }
     }
 }
 

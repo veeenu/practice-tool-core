@@ -18,12 +18,17 @@ pub struct Distribution {
 impl Distribution {
     /// Constructor. The object will be created in `target/dist/<zip_file>`.
     pub fn new<P: AsRef<Path>>(zip_file: P) -> Self {
-        Self { zip_file: dist_path().join(zip_file), artifacts: Vec::new(), files: Vec::new() }
+        Self {
+            zip_file: dist_path().join(zip_file),
+            artifacts: Vec::new(),
+            files: Vec::new(),
+        }
     }
 
     /// Add an artifact (e.g. a compiled resource).
     pub fn with_artifact<P: AsRef<Path>, S: Into<String>>(mut self, path: P, entry: S) -> Self {
-        self.artifacts.push((target_path("release").join(path), entry.into()));
+        self.artifacts
+            .push((target_path("release").join(path), entry.into()));
         self
     }
 
@@ -58,7 +63,8 @@ impl Distribution {
                 .read_to_end(&mut buf)
                 .context("Couldn't read file")?;
 
-            zip.start_file(&dst, file_options).context("Couldn't start zip file")?;
+            zip.start_file(&dst, file_options)
+                .context("Couldn't start zip file")?;
             zip.write_all(&buf).context("Couldn't write zip")?;
 
             buf.clear();

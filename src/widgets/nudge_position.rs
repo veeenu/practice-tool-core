@@ -27,7 +27,13 @@ impl<N: NudgePositionStorage> NudgePosition<N> {
             None => "Nudge down".to_string(),
         };
 
-        Self { nudge_position, key_nudge_up, key_nudge_down, label_nudge_up, label_nudge_down }
+        Self {
+            nudge_position,
+            key_nudge_up,
+            key_nudge_down,
+            label_nudge_up,
+            label_nudge_down,
+        }
     }
 }
 
@@ -37,13 +43,19 @@ impl<N: NudgePositionStorage> Widget for NudgePosition<N> {
         let button_width = BUTTON_WIDTH * scale;
         let button_height = BUTTON_HEIGHT;
 
-        if ui.button_with_size(&self.label_nudge_up, [button_width * 0.5 - 4., button_height]) {
+        if ui.button_with_size(
+            &self.label_nudge_up,
+            [button_width * 0.5 - 4., button_height],
+        ) {
             self.nudge_position.nudge_up();
         }
 
         ui.same_line();
 
-        if ui.button_with_size(&self.label_nudge_down, [button_width * 0.5 - 4., button_height]) {
+        if ui.button_with_size(
+            &self.label_nudge_down,
+            [button_width * 0.5 - 4., button_height],
+        ) {
             self.nudge_position.nudge_down();
         }
     }
@@ -53,7 +65,11 @@ impl<N: NudgePositionStorage> Widget for NudgePosition<N> {
             self.nudge_position.nudge_up();
         }
 
-        if self.key_nudge_down.map(|k| k.is_pressed(ui)).unwrap_or(false) {
+        if self
+            .key_nudge_down
+            .map(|k| k.is_pressed(ui))
+            .unwrap_or(false)
+        {
             self.nudge_position.nudge_down();
         }
     }
