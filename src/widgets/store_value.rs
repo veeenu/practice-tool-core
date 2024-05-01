@@ -13,6 +13,7 @@ pub struct StoreValue<W: ReadWrite> {
     readwrite: W,
     label: String,
     key: Option<Key>,
+    logs: Vec<String>,
 }
 
 impl<W: ReadWrite> StoreValue<W> {
@@ -27,7 +28,14 @@ impl<W: ReadWrite> StoreValue<W> {
             readwrite: write,
             label,
             key,
+            logs: Vec::new(),
         }
+    }
+
+    fn log_state(&mut self) {
+        self.readwrite.read();
+        self.logs
+            .push(format!("{0} changed", self.readwrite.label()));
     }
 }
 
@@ -49,6 +57,7 @@ impl<W: ReadWrite> Widget for StoreValue<W> {
 
         if ui.button_with_size(&self.label, [button_width, button_height]) {
             self.readwrite.write();
+            self.log_state();
         }
     }
 
@@ -56,6 +65,13 @@ impl<W: ReadWrite> Widget for StoreValue<W> {
         if self.key.map(|key| key.is_pressed(ui)).unwrap_or(false) {
             self.readwrite.read();
             self.readwrite.write();
+            self.log_state();
         }
+    }
+
+    fn log(&mut self, tx: crossbeam_channel::Sender<String>) {
+        self.logs.drain(..).for_each(|log| {
+            tx.send(log).ok();
+        });
     }
 }
