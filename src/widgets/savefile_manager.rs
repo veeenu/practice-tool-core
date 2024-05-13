@@ -158,13 +158,17 @@ impl SavefileManagerInner {
             return;
         }
 
-        let mut dst_path = self
-            .current_file
-            .as_ref()
-            .and_then(
-                |c| if c.is_dir() { Some(c.clone()) } else { c.parent().map(Path::to_path_buf) },
-            )
-            .unwrap_or_else(|| self.file_tree.path().to_path_buf());
+        let mut dst_path =
+            self.current_file
+                .as_ref()
+                .and_then(|c| {
+                    if c.is_dir() {
+                        Some(c.clone())
+                    } else {
+                        c.parent().map(Path::to_path_buf)
+                    }
+                })
+                .unwrap_or_else(|| self.file_tree.path().to_path_buf());
         dst_path.push(&self.savefile_name);
 
         match import_savefile(&dst_path, &self.savefile_path) {
