@@ -14,8 +14,8 @@ impl FileInstall {
         Self { files: Vec::new() }
     }
 
-    /// Add a file. `path` can be absolute or relative to the project root, `entry` is
-    /// relative to the game's directory.
+    /// Add a file. `path` can be absolute or relative to the project root,
+    /// `entry` is relative to the game's directory.
     pub fn with_file<P: AsRef<Path>, S: Into<String>>(mut self, path: P, entry: S) -> Self {
         self.files.push((path.as_ref().to_path_buf(), entry.into()));
         self
@@ -34,8 +34,8 @@ impl FileInstall {
         Ok(())
     }
 
-    /// Uninstall files. The environment variable designed by `env_var` must point
-    /// to the game's directory.
+    /// Uninstall files. The environment variable designed by `env_var` must
+    /// point to the game's directory.
     pub fn uninstall(self, env_var: &str) -> Result<()> {
         let path = env::var(env_var).context("environment variable")?;
         let path = Path::new(&path);

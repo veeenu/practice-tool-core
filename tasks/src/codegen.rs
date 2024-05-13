@@ -91,8 +91,9 @@ struct AobIndirect<'a> {
 }
 
 impl Aob for AobIndirect<'_> {
-    // Find the position of a matching pattern, and read a u32 value at an offset from there.
-    // E.g. in "48 8b 0D aa bb cc dd" would yield the value "aa bb cc dd".
+    // Find the position of a matching pattern, and read a u32 value at an offset
+    // from there. E.g. in "48 8b 0D aa bb cc dd" would yield the value "aa bb
+    // cc dd".
     fn find(&self, pe_file: &PeFile) -> Option<(&str, usize)> {
         self.aobs.iter().find_map(|aob| {
             let needle = into_needle(aob);
@@ -130,8 +131,9 @@ struct AobIndirectTwice<'a> {
 }
 
 impl Aob for AobIndirectTwice<'_> {
-    // Find the position of a matching pattern, read a u32 value at an offset from there,
-    // interpret that as an offset from the pattern's position and add another offset from there.
+    // Find the position of a matching pattern, read a u32 value at an offset from
+    // there, interpret that as an offset from the pattern's position and add
+    // another offset from there.
     fn find(&self, pe_file: &PeFile) -> Option<(&str, usize)> {
         self.aobs.iter().find_map(|aob| {
             let needle = into_needle(aob);
