@@ -18,11 +18,7 @@ pub use file_install::FileInstall;
 /// Points to the current project's root directory (e.g. the one with the
 /// topmost `Cargo.toml`).
 pub fn project_root() -> PathBuf {
-    Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap())
-        .ancestors()
-        .nth(1)
-        .unwrap()
-        .to_path_buf()
+    Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).ancestors().nth(1).unwrap().to_path_buf()
 }
 
 /// Points to a path in `target`.
@@ -75,11 +71,7 @@ pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32) -> Result<Command
         return Ok(cmd);
     }
 
-    let child_cmd = child_cmd
-        .as_ref()
-        .strip_prefix(&project_root)
-        .unwrap()
-        .with_extension("exe");
+    let child_cmd = child_cmd.as_ref().strip_prefix(&project_root).unwrap().with_extension("exe");
 
     Command::new("protontricks-launch")
         .arg("-h")
@@ -88,10 +80,7 @@ pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32) -> Result<Command
 
     let mut cmd = Command::new("protontricks-launch");
 
-    cmd.current_dir(project_root)
-        .arg("--appid")
-        .arg(appid.to_string())
-        .arg(child_cmd);
+    cmd.current_dir(project_root).arg("--appid").arg(appid.to_string()).arg(child_cmd);
 
     Ok(cmd)
 }

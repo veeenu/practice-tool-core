@@ -6,9 +6,7 @@ pub struct LabelWidget {
 
 impl LabelWidget {
     pub fn new(label: &str) -> Self {
-        Self {
-            label: label.to_string(),
-        }
+        Self { label: label.to_string() }
     }
 }
 

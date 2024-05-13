@@ -24,18 +24,12 @@ impl<W: ReadWrite> StoreValue<W> {
             None => label.to_string(),
         };
 
-        Self {
-            readwrite: write,
-            label,
-            key,
-            logs: Vec::new(),
-        }
+        Self { readwrite: write, label, key, logs: Vec::new() }
     }
 
     fn log_state(&mut self) {
         self.readwrite.read();
-        self.logs
-            .push(format!("{0} triggered", self.readwrite.label()));
+        self.logs.push(format!("{0} triggered", self.readwrite.label()));
     }
 }
 

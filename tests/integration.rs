@@ -59,19 +59,11 @@ fn test_savefile_manager() {
     fs::write(tmp_dir.path().join("Any%").join("foo1.sl2"), "foo1").unwrap();
     fs::write(tmp_dir.path().join("Any%").join("bar1.sl2"), "bar1").unwrap();
     fs::create_dir_all(tmp_dir.path().join("All Bosses")).unwrap();
-    fs::write(
-        tmp_dir.path().join("All Bosses").join("ER0002.sl2"),
-        "ER0002.sl2",
-    )
-    .unwrap();
+    fs::write(tmp_dir.path().join("All Bosses").join("ER0002.sl2"), "ER0002.sl2").unwrap();
     fs::write(tmp_dir.path().join("All Bosses").join("foo2.sl2"), "foo2").unwrap();
     fs::write(tmp_dir.path().join("All Bosses").join("bar2.sl2"), "bar2").unwrap();
     fs::create_dir_all(tmp_dir.path().join("Glitchless")).unwrap();
-    fs::write(
-        tmp_dir.path().join("Glitchless").join("ER0003.sl2"),
-        "ER0003.sl2",
-    )
-    .unwrap();
+    fs::write(tmp_dir.path().join("Glitchless").join("ER0003.sl2"), "ER0003.sl2").unwrap();
     fs::write(tmp_dir.path().join("Glitchless").join("foo3.sl2"), "foo3").unwrap();
     fs::write(tmp_dir.path().join("Glitchless").join("bar3.sl2"), "bar3").unwrap();
 
@@ -105,11 +97,7 @@ fn test_group() {
     let flag2 = Box::new(FlagWidget::new("test 2", TestFlag(true), None));
     let flag3 = Box::new(FlagWidget::new("test 3", TestFlag(true), None));
 
-    let mut group = Group::new(
-        "Test group",
-        "escape".parse().unwrap(),
-        vec![flag1, flag2, flag3],
-    );
+    let mut group = Group::new("Test group", "escape".parse().unwrap(), vec![flag1, flag2, flag3]);
 
     harness_test! {
         move |ui| group.render(ui)
@@ -166,17 +154,11 @@ fn test_position() {
         }
     }
 
-    let mut position = Position::new(
-        DummyPositionStorage::default(),
-        "h".parse().ok(),
-        "rshift+h".parse().ok(),
-    );
+    let mut position =
+        Position::new(DummyPositionStorage::default(), "h".parse().ok(), "rshift+h".parse().ok());
 
-    let mut nudge = NudgePosition::new(
-        DummyPositionStorage::default(),
-        "[".parse().ok(),
-        "]".parse().ok(),
-    );
+    let mut nudge =
+        NudgePosition::new(DummyPositionStorage::default(), "[".parse().ok(), "]".parse().ok());
 
     harness_test! {
         move |ui| {

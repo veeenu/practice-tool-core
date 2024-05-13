@@ -33,12 +33,10 @@ fn into_needle(pattern: &str) -> Vec<Option<u8>> {
 
 fn naive_search(bytes: &[u8], pattern: &[Option<u8>]) -> Option<usize> {
     bytes.windows(pattern.len()).position(|wnd| {
-        wnd.iter()
-            .zip(pattern.iter())
-            .all(|(byte, pattern)| match pattern {
-                Some(x) => byte == x,
-                None => true,
-            })
+        wnd.iter().zip(pattern.iter()).all(|(byte, pattern)| match pattern {
+            Some(x) => byte == x,
+            None => true,
+        })
     })
 }
 
@@ -68,10 +66,7 @@ impl Aob for AobDirect<'_> {
                 .section_headers()
                 .into_iter()
                 .filter_map(|sh| {
-                    Some((
-                        sh.VirtualAddress as usize,
-                        pe_file.get_section_bytes(sh).ok()?,
-                    ))
+                    Some((sh.VirtualAddress as usize, pe_file.get_section_bytes(sh).ok()?))
                 })
                 .find_map(|(base, bytes)| {
                     naive_search(bytes, &needle).map(|r| (self.name, r + base))
@@ -110,9 +105,7 @@ impl Aob for AobIndirect<'_> {
                 .find_map(|bytes| {
                     naive_search(bytes, &needle).map(|r| {
                         let r = u32::from_le_bytes(
-                            (&bytes[r + self.offset..r + self.offset + 4])
-                                .try_into()
-                                .unwrap(),
+                            (&bytes[r + self.offset..r + self.offset + 4]).try_into().unwrap(),
                         );
                         (self.name, r as usize)
                     })
@@ -149,10 +142,7 @@ impl Aob for AobIndirectTwice<'_> {
                 .section_headers()
                 .into_iter()
                 .filter_map(|sh| {
-                    Some((
-                        sh.VirtualAddress as usize,
-                        pe_file.get_section_bytes(sh).ok()?,
-                    ))
+                    Some((sh.VirtualAddress as usize, pe_file.get_section_bytes(sh).ok()?))
                 })
                 .find_map(|(base, bytes)| {
                     let offset = naive_search(bytes, &needle)?;
@@ -179,11 +169,7 @@ impl Aob for AobIndirectTwice<'_> {
 }
 
 pub fn aob_direct<'a>(name: &'a str, aobs: &'a [&'a str], add_base: bool) -> Box<dyn Aob + 'a> {
-    Box::new(AobDirect {
-        name,
-        aobs,
-        add_base,
-    })
+    Box::new(AobDirect { name, aobs, add_base })
 }
 
 pub fn aob_indirect<'a>(
@@ -192,12 +178,7 @@ pub fn aob_indirect<'a>(
     offset: usize,
     add_base: bool,
 ) -> Box<dyn Aob + 'a> {
-    Box::new(AobIndirect {
-        name,
-        aobs,
-        offset,
-        add_base,
-    })
+    Box::new(AobIndirect { name, aobs, offset, add_base })
 }
 
 pub fn aob_indirect_twice<'a>(
@@ -207,19 +188,11 @@ pub fn aob_indirect_twice<'a>(
     offset_from_offset: usize,
     add_base: bool,
 ) -> Box<dyn Aob + 'a> {
-    Box::new(AobIndirectTwice {
-        name,
-        aobs,
-        offset_from_pattern,
-        offset_from_offset,
-        add_base,
-    })
+    Box::new(AobIndirectTwice { name, aobs, offset_from_pattern, offset_from_offset, add_base })
 }
 
 fn find_aobs<'a>(pe_file: &PeFile, aobs: &'a [Box<dyn Aob>]) -> Vec<(&'a str, usize)> {
-    aobs.iter()
-        .filter_map(|aob| aob.find(pe_file))
-        .collect::<Vec<_>>()
+    aobs.iter().filter_map(|aob| aob.find(pe_file)).collect::<Vec<_>>()
 }
 
 // Codegen routine
@@ -292,12 +265,7 @@ fn codegen_version_enum(ver: &[VersionData]) -> String {
     string.push_str("pub enum Version {\n");
 
     for v in ver {
-        writeln!(
-            string,
-            "    V{}_{:02}_{},",
-            v.version.0, v.version.1, v.version.2
-        )
-        .unwrap();
+        writeln!(string, "    V{}_{:02}_{},", v.version.0, v.version.1, v.version.2).unwrap();
     }
 
     string.push_str("}\n\n");
@@ -355,11 +323,7 @@ fn codegen_version_enum(ver: &[VersionData]) -> String {
     for v in ver {
         let Version(maj, min, patch) = v.version;
         let stem = format!("{maj}_{min:02}_{patch}");
-        writeln!(
-            string,
-            "            Version::V{stem} => BASE_ADDRESSES_{stem},"
-        )
-        .unwrap();
+        writeln!(string, "            Version::V{stem} => BASE_ADDRESSES_{stem},").unwrap();
     }
 
     string.push_str("        }\n");
@@ -390,11 +354,7 @@ pub fn codegen_base_addresses(
                 .fixed()
                 .unwrap()
                 .dwProductVersion;
-            let version = Version(
-                version.Major as u32,
-                version.Minor as u32,
-                version.Patch as u32,
-            );
+            let version = Version(version.Major as u32, version.Minor as u32, version.Patch as u32);
 
             if processed_versions.contains(&version) {
                 None
@@ -419,8 +379,5 @@ pub fn codegen_base_addresses(
         o
     });
 
-    File::create(codegen_path)
-        .unwrap()
-        .write_all(codegen.as_bytes())
-        .unwrap();
+    File::create(codegen_path).unwrap().write_all(codegen.as_bytes()).unwrap();
 }

@@ -38,11 +38,7 @@ impl<F: Flag> FlagWidget<F> {
     }
 
     fn log_state(&mut self, state: bool) {
-        self.logs.push(if state {
-            self.label_true.clone()
-        } else {
-            self.label_false.clone()
-        });
+        self.logs.push(if state { self.label_true.clone() } else { self.label_false.clone() });
     }
 }
 
