@@ -15,7 +15,8 @@ use anyhow::{Context, Result};
 pub use dist::Distribution;
 pub use file_install::FileInstall;
 
-/// Points to the current project's root directory (e.g. the one with the topmost `Cargo.toml`).
+/// Points to the current project's root directory (e.g. the one with the
+/// topmost `Cargo.toml`).
 pub fn project_root() -> PathBuf {
     Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap())
         .ancestors()
@@ -26,8 +27,9 @@ pub fn project_root() -> PathBuf {
 
 /// Points to a path in `target`.
 ///
-/// On Windows, it is the normal directory for the build target (e.g. `target/release`).
-/// On Linux, it is the target directory under the `x86_64-pc-windows-msvc` target.
+/// On Windows, it is the normal directory for the build target (e.g.
+/// `target/release`). On Linux, it is the target directory under the
+/// `x86_64-pc-windows-msvc` target.
 pub fn target_path(target: &str) -> PathBuf {
     let mut target_path = project_root().join("target");
     if cfg!(not(windows)) {
