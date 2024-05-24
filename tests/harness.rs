@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use glow::HasContext;
 use imgui::{Context, Ui};
+use imgui_glow_renderer::glow::HasContext;
 use imgui_glow_renderer::AutoRenderer;
 use imgui_sdl2_support::SdlPlatform;
 use sdl2::event::Event;
@@ -33,7 +33,9 @@ pub fn test(mut test_cases: Vec<Box<Test>>) {
     window.subsystem().gl_set_swap_interval(1).unwrap();
 
     let gl = unsafe {
-        glow::Context::from_loader_function(|s| window.subsystem().gl_get_proc_address(s) as _)
+        imgui_glow_renderer::glow::Context::from_loader_function(|s| {
+            window.subsystem().gl_get_proc_address(s) as _
+        })
     };
 
     unsafe { gl.clear_color(0.26, 0.35, 0.38, 1.0) };
