@@ -17,14 +17,18 @@ edition = "2021"
 
 [dependencies]
 crossbeam-channel = "0.5.12"
-imgui = "0.11.0"
+imgui = "0.12"
 once_cell.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 
 [dev-dependencies]
 glow = "0.12.0"
-imgui-glow-renderer = "0.11.0"
-imgui-sdl2-support = "0.11.0"
+imgui-glow-renderer = "0.12.0"
+imgui-sdl2-support = "0.12.0"
 sdl2 = { version = "0.34.5" }
 tempfile = "3.10.1"
+
+# TODO: remove this once the fix to imgui-rs/imgui-rs#775 gets released.
+[patch.'crates-io']
+imgui = { git = "https://github.com/imgui-rs/imgui-rs", rev = "cb8beeb" }
