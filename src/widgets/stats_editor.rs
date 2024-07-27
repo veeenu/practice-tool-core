@@ -9,6 +9,7 @@ const STAT_EDIT_TAG: &str = "##stats_editor";
 pub enum Datum<'a> {
     Int { label: &'a str, value: &'a mut i32, min: i32, max: i32 },
     Float { label: &'a str, value: &'a mut f32, min: f32, max: f32 },
+    Byte { label: &'a str, value: &'a mut i8, min: i8, max: i8 },
 }
 
 impl<'a> Datum<'a> {
@@ -18,6 +19,10 @@ impl<'a> Datum<'a> {
 
     pub fn float(label: &'a str, value: &'a mut f32, min: f32, max: f32) -> Self {
         Datum::Float { label, value, min, max }
+    }
+
+    pub fn byte(label: &'a str, value: &'a mut i8, min: i8, max: i8) -> Self {
+        Datum::Byte { label, value, min, max }
     }
 }
 
@@ -106,6 +111,11 @@ impl<S: Stats> Widget for StatsEditor<S> {
                     },
                     Datum::Float { label, value, min, max } => {
                         if ui.input_float(label, value).build() {
+                            *value = (*value).clamp(min, max);
+                        }
+                    },
+                    Datum::Byte { label, value, min, max } => {
+                        if ui.input_scalar(label, value).step(1).build() {
                             *value = (*value).clamp(min, max);
                         }
                     },
