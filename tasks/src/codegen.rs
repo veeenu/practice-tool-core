@@ -272,15 +272,16 @@ fn codegen_version_enum(ver: &[VersionData]) -> String {
 
     // impl From<(u32, u32, u32)> for Version
 
-    string.push_str("impl From<(u32, u32, u32)> for Version {\n");
-    string.push_str("    fn from(v: (u32, u32, u32)) -> Self {\n");
+    string.push_str("impl TryFrom<(u32, u32, u32)> for Version {\n");
+    string.push_str("    type Error = ();\n\n");
+    string.push_str("    fn try_from(v: (u32, u32, u32)) -> Result<Self, ()> {\n");
     string.push_str("        match v {\n");
 
     for v in ver {
         let Version(maj, min, patch) = v.version;
         writeln!(
             string,
-            "            ({maj}, {min}, {patch}) => Version::V{maj}_{min:02}_{patch},"
+            "            ({maj}, {min}, {patch}) => Ok(Version::V{maj}_{min:02}_{patch}),"
         )
         .unwrap();
     }
@@ -289,7 +290,7 @@ fn codegen_version_enum(ver: &[VersionData]) -> String {
     string.push_str(
         "                log::error!(\"Unrecognized version {maj}.{min:02}.{patch}\");\n",
     );
-    string.push_str("                panic!()\n");
+    string.push_str("                Err(())\n");
     string.push_str("            }\n");
     string.push_str("        }\n");
     string.push_str("    }\n");
