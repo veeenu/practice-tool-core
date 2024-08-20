@@ -10,6 +10,7 @@ pub enum Datum<'a> {
     Int { label: &'a str, value: &'a mut i32, min: i32, max: i32 },
     Float { label: &'a str, value: &'a mut f32, min: f32, max: f32 },
     Byte { label: &'a str, value: &'a mut i8, min: i8, max: i8 },
+    Separator,
 }
 
 impl<'a> Datum<'a> {
@@ -23,6 +24,10 @@ impl<'a> Datum<'a> {
 
     pub fn byte(label: &'a str, value: &'a mut i8, min: i8, max: i8) -> Self {
         Datum::Byte { label, value, min, max }
+    }
+
+    pub fn separator() -> Self {
+        Datum::Separator
     }
 }
 
@@ -119,6 +124,7 @@ impl<S: Stats> Widget for StatsEditor<S> {
                             *value = (*value).clamp(min, max);
                         }
                     },
+                    Datum::Separator => ui.separator(),
                 }
             }
 
