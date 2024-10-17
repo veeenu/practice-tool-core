@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 use std::fmt::Write;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::{fs, io};
 
 use crossbeam_channel::Sender;
 use imgui::sys::{
@@ -320,20 +320,23 @@ enum FileTree {
 }
 
 impl FileTree {
-    fn new(path: PathBuf) -> Result<Self, std::io::Error> {
-        if path.is_file() {
-            Ok(FileTree::File { path })
-        } else if path.is_dir() {
-            let mut children = path
-                .read_dir()?
-                .map(|dir| FileTree::new(dir?.path()))
-                .collect::<Result<Vec<FileTree>, _>>()?;
+    fn new(path: PathBuf) -> Result<Self, io::Error> {
+        match fs::metadata(&path)? {
+            m if m.file_type().is_file() => Ok(FileTree::File { path }),
+            m if m.file_type().is_dir() => {
+                let mut children = path
+                    .read_dir()?
+                    .map(|dir| FileTree::new(dir?.path()))
+                    .collect::<Result<Vec<FileTree>, _>>()?;
 
-            children.sort();
+                children.sort();
 
-            Ok(FileTree::Directory { path, children })
-        } else {
-            unreachable!("Savefile path is neither file nor directory");
+                Ok(FileTree::Directory { path, children })
+            },
+            m => Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Unrecognized file type for {path:?}: {m:?}"),
+            )),
         }
     }
 
