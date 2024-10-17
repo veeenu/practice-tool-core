@@ -1,6 +1,7 @@
 [workspace]
 members = [
-  "tasks"
+  "tasks",
+  "windows"
 ]
 
 [workspace.dependencies]
