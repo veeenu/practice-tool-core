@@ -4,11 +4,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use windows::{
-    core::w,
-    Win32::System::Registry::{
-        RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_LOCAL_MACHINE, KEY_READ, REG_SZ, REG_VALUE_TYPE,
-    },
+use windows::core::w;
+use windows::Win32::System::Registry::{
+    RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_LOCAL_MACHINE, KEY_READ, REG_SZ, REG_VALUE_TYPE,
 };
 
 unsafe fn get_steam_path_from_registry() -> Result<PathBuf, String> {
