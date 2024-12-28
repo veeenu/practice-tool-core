@@ -31,7 +31,7 @@ unsafe fn draw_slice(
     let draw_lists = igGetForegroundDrawList();
 
     let slice_angle = PI * 2.0 / (count as f32);
-    let angle_base = slice_angle * (index as f32) - (slice_angle * 0.5) + PI * 0.5;
+    let angle_base = slice_angle * (index as f32) - PI * 0.5;
     let angle_base = if angle_base < 0.0 { angle_base + 2.0 * PI } else { angle_base };
     let angle_min = angle_base - slice_angle * 0.5;
     let angle_max = angle_base + slice_angle * 0.5;
@@ -73,10 +73,13 @@ unsafe fn draw_slice(
 }
 
 pub fn radial_menu(ui: &imgui::Ui, elements: &[&str], pos: ImVec2) -> Option<usize> {
+    let mut selected = None;
     for (i, txt) in elements.iter().enumerate() {
-        unsafe {
-            draw_slice(ui, txt, i, elements.len(), 20.0, 100.0, pos);
+        let sel = unsafe { draw_slice(ui, txt, i, elements.len(), 20.0, 100.0, pos) };
+
+        if sel {
+            selected = Some(i);
         }
     }
-    None
+    selected
 }
