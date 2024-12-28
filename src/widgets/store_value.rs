@@ -63,6 +63,12 @@ impl<W: ReadWrite> Widget for StoreValue<W> {
         }
     }
 
+    fn action(&mut self) {
+        self.readwrite.read();
+        self.readwrite.write();
+        self.log_state();
+    }
+
     fn log(&mut self, tx: crossbeam_channel::Sender<String>) {
         self.logs.drain(..).for_each(|log| {
             tx.send(log).ok();

@@ -1,6 +1,7 @@
 use std::fmt::Write;
 use std::fs;
 
+use imgui::sys::ImVec2;
 use practice_tool_core::widgets::flag::{Flag, FlagWidget};
 use practice_tool_core::widgets::group::Group;
 use practice_tool_core::widgets::nudge_position::{NudgePosition, NudgePositionStorage};
@@ -8,7 +9,7 @@ use practice_tool_core::widgets::position::{Position, PositionStorage};
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
 use practice_tool_core::widgets::stats_editor::{Datum, Stats, StatsEditor};
 use practice_tool_core::widgets::store_value::{ReadWrite, StoreValue};
-use practice_tool_core::widgets::Widget;
+use practice_tool_core::widgets::{radial_menu, Widget};
 
 mod harness;
 
@@ -273,6 +274,20 @@ fn test_store_value() {
 
             cycle_speed.render(ui);
             cycle_speed.interact(ui);
+        }
+    }
+}
+
+#[test]
+fn test_radial_menu() {
+    harness_test! {
+        move |ui| {
+            let [x, y] = ui.io().mouse_pos;
+            let [wx, wy] = ui.io().display_size;
+            let x = x - wx * 0.5;
+            let y = y - wy * 0.5;
+            ui.text(format!("Mouse delta: {x:.2} {y:.2}"));
+            radial_menu::radial_menu(ui, &["foo", "barbarbar", "baz", "quux", "quitout"], ImVec2 { x, y });
         }
     }
 }

@@ -77,6 +77,10 @@ impl<S: PositionStorage> Widget for Position<S> {
         }
     }
 
+    fn action(&mut self) {
+        self.load_position();
+    }
+
     fn log(&mut self, tx: crossbeam_channel::Sender<String>) {
         self.logs.drain(..).for_each(|log| {
             tx.send(log).ok();
