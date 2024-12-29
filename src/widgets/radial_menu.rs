@@ -38,7 +38,8 @@ unsafe fn draw_slice(
 
     let angle_of_pos = f32::atan2(pos.y, pos.x);
     let angle_of_pos = if angle_of_pos < 0. { angle_of_pos + 2.0 * PI } else { angle_of_pos };
-    let is_active = angle_min <= angle_of_pos && angle_max >= angle_of_pos;
+    let is_active =
+        !(pos.x == 0.0 || pos.y == 0.0) && angle_min <= angle_of_pos && angle_max >= angle_of_pos;
 
     ImDrawList_PathArcTo(draw_lists, center, radius_max, angle_min + gap1, angle_max - gap1, 0);
     ImDrawList_PathArcTo(draw_lists, center, radius_min, angle_max - gap2, angle_min + gap2, 0);
