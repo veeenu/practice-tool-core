@@ -73,10 +73,16 @@ unsafe fn draw_slice(
     is_active
 }
 
-pub fn radial_menu(ui: &imgui::Ui, elements: &[&str], pos: ImVec2) -> Option<usize> {
+pub fn radial_menu(
+    ui: &imgui::Ui,
+    elements: &[&str],
+    pos: ImVec2,
+    radius_min: f32,
+    radius_max: f32,
+) -> Option<usize> {
     let mut selected = None;
     for (i, txt) in elements.iter().enumerate() {
-        let sel = unsafe { draw_slice(ui, txt, i, elements.len(), 20.0, 100.0, pos) };
+        let sel = unsafe { draw_slice(ui, txt, i, elements.len(), radius_min, radius_max, pos) };
 
         if sel {
             selected = Some(i);
