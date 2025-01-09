@@ -287,7 +287,7 @@ fn test_radial_menu() {
             let x = x - wx * 0.5;
             let y = y - wy * 0.5;
             ui.text(format!("Mouse position: {x:.2} {y:.2}"));
-            let r = radial_menu::radial_menu(ui, &["foo", "barbarbar", "baz", "quux", "quitout"], ImVec2 { x, y });
+            let r = radial_menu::radial_menu(ui, &["foo", "barbarbar", "baz", "quux", "quitout"], ImVec2 { x, y }, 100., 300.);
             match r {
                 Some (i) => ui.text(format!("Selected {i}"))
                     , None => ui.text("Nothing selected")

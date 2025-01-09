@@ -358,6 +358,20 @@ impl FromStr for Key {
 }
 
 impl Key {
+    pub fn keys(&self, out: &mut Vec<imgui::Key>) {
+        out.push(self.key);
+        self.modifiers.iter().filter_map(Option::as_ref).copied().for_each(|modif| {
+            match modif {
+                Modifier::LeftCtrl | Modifier::RightCtrl => out.push(imgui::Key::ModCtrl),
+                Modifier::LeftShift | Modifier::RightShift => out.push(imgui::Key::ModShift),
+                Modifier::LeftAlt | Modifier::RightAlt => out.push(imgui::Key::ModAlt),
+                Modifier::LeftSuper | Modifier::RightSuper => out.push(imgui::Key::ModSuper),
+                _ => {},
+            }
+            out.push(imgui::Key::from(modif));
+        });
+    }
+
     pub fn is_down(&self, ui: &Ui) -> bool {
         ui.is_key_down(self.key)
             && self.modifiers.iter().all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))

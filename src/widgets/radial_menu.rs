@@ -41,34 +41,36 @@ unsafe fn draw_slice(
     let is_active =
         !(pos.x == 0.0 || pos.y == 0.0) && angle_min <= angle_of_pos && angle_max >= angle_of_pos;
 
+    let button_color = ImColor32::from(ui.style_color(if is_active {
+        StyleColor::ButtonActive
+    } else {
+        StyleColor::Button
+    }));
+
     ImDrawList_PathArcTo(draw_lists, center, radius_max, angle_min + gap1, angle_max - gap1, 0);
     ImDrawList_PathArcTo(draw_lists, center, radius_min, angle_max - gap2, angle_min + gap2, 0);
-    ImDrawList_PathFillConvex(
-        draw_lists,
-        ImColor32::from(ui.style_color(if is_active {
-            StyleColor::ButtonActive
-        } else {
-            StyleColor::Button
-        }))
-        .to_bits(),
-    );
+    ImDrawList_PathFillConvex(draw_lists, button_color.to_bits());
 
     let color = ImColor32::from(ui.style_color(StyleColor::Text)).to_bits();
+    let color2 = ImColor32::from(ui.style_color(StyleColor::WindowBg)).to_bits();
     let text_start = txt.as_ptr();
     let text_end = text_start.add(txt.len());
     let mut text_size = ImVec2 { x: 0.0, y: 0.0 };
     igCalcTextSize(&mut text_size, text_start as _, text_end as _, false, 0.0);
 
+    let text_pos = ImVec2 {
+        x: center.x + radius_mid * angle_base.cos() - text_size.x * 0.5,
+        y: center.y + radius_mid * angle_base.sin() - text_size.y * 0.5,
+    };
+
     ImDrawList_AddText_Vec2(
         draw_lists,
-        ImVec2 {
-            x: center.x + radius_mid * angle_base.cos() - text_size.x * 0.5,
-            y: center.y + radius_mid * angle_base.sin() - text_size.y * 0.5,
-        },
-        color,
+        ImVec2 { x: text_pos.x + 1.0, y: text_pos.y + 1.0 },
+        color2,
         text_start as _,
         text_end as _,
     );
+    ImDrawList_AddText_Vec2(draw_lists, text_pos, color, text_start as _, text_end as _);
 
     is_active
 }
