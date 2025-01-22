@@ -13,12 +13,13 @@ use imgui::{ImColor32, StyleColor};
 unsafe fn draw_slice(
     ui: &imgui::Ui,
     txt: &str,
-    index: usize,
-    count: usize,
+    angle_base: f32,
+    angle_min: f32,
+    angle_max: f32,
     radius_min: f32,
     radius_max: f32,
-    pos: ImVec2,
-) -> bool {
+    is_active: bool,
+) {
     const GAP: f32 = 3.0;
 
     let [x, y] = ui.io().display_size;
@@ -29,17 +30,6 @@ unsafe fn draw_slice(
     let gap2 = GAP / radius_min;
 
     let draw_lists = igGetForegroundDrawList();
-
-    let slice_angle = PI * 2.0 / (count as f32);
-    let angle_base = slice_angle * (index as f32) - PI * 0.5;
-    let angle_base = if angle_base < 0.0 { angle_base + 2.0 * PI } else { angle_base };
-    let angle_min = angle_base - slice_angle * 0.5;
-    let angle_max = angle_base + slice_angle * 0.5;
-
-    let angle_of_pos = f32::atan2(pos.y, pos.x);
-    let angle_of_pos = if angle_of_pos < 0. { angle_of_pos + 2.0 * PI } else { angle_of_pos };
-    let is_active =
-        !(pos.x == 0.0 || pos.y == 0.0) && angle_min <= angle_of_pos && angle_max >= angle_of_pos;
 
     let button_color = ImColor32::from(ui.style_color(if is_active {
         StyleColor::ButtonActive
@@ -71,8 +61,6 @@ unsafe fn draw_slice(
         text_end as _,
     );
     ImDrawList_AddText_Vec2(draw_lists, text_pos, color, text_start as _, text_end as _);
-
-    is_active
 }
 
 pub fn radial_menu(
@@ -83,11 +71,27 @@ pub fn radial_menu(
     radius_max: f32,
 ) -> Option<usize> {
     let mut selected = None;
-    for (i, txt) in elements.iter().enumerate() {
-        let sel = unsafe { draw_slice(ui, txt, i, elements.len(), radius_min, radius_max, pos) };
+    let count = elements.len();
+    for (index, txt) in elements.iter().enumerate() {
+        let slice_angle = PI * 2.0 / (count as f32);
+        let angle_base = slice_angle * (index as f32) - PI * 0.5;
+        let angle_base = if angle_base < 0.0 { angle_base + 2.0 * PI } else { angle_base };
+        let angle_min = angle_base - slice_angle * 0.5;
+        let angle_max = angle_base + slice_angle * 0.5;
 
-        if sel {
-            selected = Some(i);
+        let angle_of_pos = f32::atan2(pos.y, pos.x);
+        let angle_of_pos = if angle_of_pos < 0. { angle_of_pos + 2.0 * PI } else { angle_of_pos };
+        let is_active = selected.is_none()
+            && !(pos.x == 0.0 && pos.y == 0.0)
+            && angle_min < angle_of_pos
+            && angle_max > angle_of_pos;
+
+        unsafe {
+            draw_slice(ui, txt, angle_base, angle_min, angle_max, radius_min, radius_max, is_active)
+        };
+
+        if is_active {
+            selected = Some(index);
         }
     }
     selected

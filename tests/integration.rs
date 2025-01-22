@@ -286,6 +286,9 @@ fn test_radial_menu() {
             let [wx, wy] = ui.io().display_size;
             let x = x - wx * 0.5;
             let y = y - wy * 0.5;
+            let norm = (x * x + y * y).sqrt();
+            let x = x / norm;
+            let y = y / norm;
             ui.text(format!("Mouse position: {x:.2} {y:.2}"));
             let r = radial_menu::radial_menu(ui, &["foo", "barbarbar", "baz", "quux", "quitout"], ImVec2 { x, y }, 100., 300.);
             match r {
