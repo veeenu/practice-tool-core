@@ -41,6 +41,10 @@ impl Widget for SavefileManager {
         self.0.interact(ui)
     }
 
+    fn action(&mut self) {
+        self.0.action()
+    }
+
     fn cursor_down(&mut self) {
         self.0.cursor_down()
     }
@@ -304,6 +308,10 @@ impl Widget for SavefileManagerInner {
         if self.key_load.map(|k| k.is_pressed(ui)).unwrap_or(false) {
             self.load_savefile();
         }
+    }
+
+    fn action(&mut self) {
+        self.load_savefile();
     }
 
     fn log(&mut self, tx: Sender<String>) {

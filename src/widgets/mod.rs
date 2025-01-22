@@ -5,6 +5,7 @@ pub mod group;
 pub mod label;
 pub mod nudge_position;
 pub mod position;
+pub mod radial_menu;
 pub mod savefile_manager;
 pub mod stats_editor;
 pub mod store_value;
@@ -29,6 +30,8 @@ pub trait Widget: Send + Sync {
     fn render_closed(&mut self, _ui: &imgui::Ui) {}
 
     fn interact(&mut self, _ui: &imgui::Ui) {}
+
+    fn action(&mut self) {}
 
     fn cursor_down(&mut self) {}
 

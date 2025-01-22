@@ -58,9 +58,13 @@ impl<F: Flag> Widget for FlagWidget<F> {
 
     fn interact(&mut self, ui: &imgui::Ui) {
         if self.hotkey.map(|k| k.is_pressed(ui)).unwrap_or(false) {
-            if let Some(state) = self.flag.toggle() {
-                self.log_state(state);
-            }
+            self.action();
+        }
+    }
+
+    fn action(&mut self) {
+        if let Some(state) = self.flag.toggle() {
+            self.log_state(state);
         }
     }
 
