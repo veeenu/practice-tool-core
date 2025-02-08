@@ -14,10 +14,8 @@ unsafe fn draw_slice(
     ui: &imgui::Ui,
     txt: &str,
     angle_base: f32,
-    angle_min: f32,
-    angle_max: f32,
-    radius_min: f32,
-    radius_max: f32,
+    (angle_min, angle_max): (f32, f32),
+    (radius_min, radius_max): (f32, f32),
     is_active: bool,
 ) {
     const GAP: f32 = 3.0;
@@ -87,7 +85,14 @@ pub fn radial_menu(
             && angle_max > angle_of_pos;
 
         unsafe {
-            draw_slice(ui, txt, angle_base, angle_min, angle_max, radius_min, radius_max, is_active)
+            draw_slice(
+                ui,
+                txt,
+                angle_base,
+                (angle_min, angle_max),
+                (radius_min, radius_max),
+                is_active,
+            )
         };
 
         if is_active {

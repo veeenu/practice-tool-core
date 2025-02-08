@@ -9,6 +9,10 @@ once_cell = "1.19.0"
 parking_lot = "0.12.1"
 serde = { version = "1.0.197", features = ["derive"] }
 
+[workspace.dependencies.windows]
+version = "0.54.0"
+features = ["Win32_UI_Input_XboxController"]
+
 [package]
 name = "practice-tool-core"
 version = "0.1.0"
@@ -22,6 +26,7 @@ imgui = "0.12"
 once_cell.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
+windows.workspace = true
 
 [dev-dependencies]
 glow = "0.12.0"
