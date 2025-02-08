@@ -28,7 +28,7 @@ impl TryFrom<&str> for ControllerCombination {
         let mut combination = ControllerCombination::default();
 
         for s in value {
-            match s {
+            match s.trim() {
                 "l1" => combination.buttons |= XINPUT_GAMEPAD_LEFT_SHOULDER,
                 "l2" => combination.left_trigger = true,
                 "l3" => combination.buttons |= XINPUT_GAMEPAD_LEFT_THUMB,
@@ -87,6 +87,9 @@ mod tests {
         assert!(ControllerCombination::try_from("l2+r2").unwrap().is_pressed(&state));
         assert!(ControllerCombination::try_from("l1+left").unwrap().is_pressed(&state));
         assert!(ControllerCombination::try_from("l2+left").unwrap().is_pressed(&state));
+        assert!(ControllerCombination::try_from("l2 +left").unwrap().is_pressed(&state));
+        assert!(ControllerCombination::try_from("l2+ left").unwrap().is_pressed(&state));
+        assert!(ControllerCombination::try_from(" l2 + left ").unwrap().is_pressed(&state));
         assert!(!ControllerCombination::try_from("l1+r1").unwrap().is_pressed(&state));
     }
 }
