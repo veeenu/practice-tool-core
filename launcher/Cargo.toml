@@ -1,0 +1,11 @@
+[package]
+name = "launcher"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+eframe = "0.32.0"
+egui = "0.32.0"
+rfd = "0.15.4"
+steamworks = "0.12.1"
