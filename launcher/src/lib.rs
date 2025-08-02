@@ -2,13 +2,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use eframe::{App, Frame, NativeOptions};
 use egui::{
     Align, Button, CentralPanel, ComboBox, Id, Label, Layout, Modal, Sides, ViewportBuilder,
 };
 use rfd::FileDialog;
-use steamworks::{AppId, Client};
+use steamlocate::{App as SteamApp, SteamDir};
 use toml_edit::{Array, DocumentMut, Item, Table, Value, value};
 
 const WINDOW_WIDTH: f32 = 480.0;
@@ -17,48 +17,109 @@ const WINDOW_HEIGHT: f32 = 240.0;
 #[cfg(unix)]
 struct Compat {
     proton_path: PathBuf,
+    compat_data_path: PathBuf,
 }
 
 #[cfg(unix)]
 impl Compat {
-    fn new() -> Result<Self> {
+    fn new(steam_dir: &SteamDir, app: &SteamApp) -> Result<Self> {
         use std::env;
-        use std::fs::File;
-        use std::io::{BufRead, BufReader};
 
-        use anyhow::{Context, bail};
+        use keyvalues_parser::Vdf;
 
-        // This gets filled automatically when instantiating a [`steamworks::Client`].
-        let compat_data_path = PathBuf::from(
-            env::var("STEAM_COMPAT_DATA_PATH").context("Compat data path unavailable")?,
-        );
+        let mapping = steam_dir.compat_tool_mapping()?;
 
-        let config_info = File::open(compat_data_path.join("config_info"))?;
-
-        // Parse the paths in the config_info file, to find one that is "nearby" the
-        // `proton` script.
-        let Some(proton_path) = BufReader::new(config_info)
-            .lines()
-            .map_while(Result::ok)
-            .filter_map(|line| {
-                use std::path::PathBuf;
-
-                let path = PathBuf::from(line);
-                if path.exists() && path.is_dir() { Some(path) } else { None }
-            })
-            .find_map(|path| {
-                use std::os::unix::fs::PermissionsExt;
-
-                let proton_path = path.join("../../proton").canonicalize().ok()?;
-                let meta = proton_path.metadata().ok()?;
-
-                if meta.permissions().mode() & 0o111 != 0 { Some(proton_path) } else { None }
-            })
-        else {
-            bail!("Could not find proton path");
+        let tool = if let Some(tool) = mapping.get(&app.app_id) {
+            tool
+        } else if let Some(tool) = mapping.get(&0) {
+            tool
+        } else {
+            mapping
+                .iter()
+                .fold((0, None), |(top_prio, top_tool), (_, tool)| {
+                    if let Some(prio) = tool.priority
+                        && prio > top_prio
+                    {
+                        (prio, Some(tool))
+                    } else {
+                        (top_prio, top_tool)
+                    }
+                })
+                .1
+                .ok_or_else(|| anyhow!("Couldn't find a mapped compatibility tool"))?
         };
 
-        Ok(Self { proton_path })
+        let tool_name = tool.name.as_ref().ok_or_else(|| anyhow!("Compat tool has no name"))?;
+
+        let prefixes = [
+            "/usr/share/steam/compatibilitytools.d".to_string(),
+            "/usr/local/share/steam/compatibilitytools.d".to_string(),
+            format!("{}/.steam/root/compatibilitytools.d", env::var("HOME").unwrap()),
+            format!("{}/.local/share/Steam/compatibilitytools.d", env::var("HOME").unwrap()),
+        ];
+
+        let proton_path = prefixes
+            .iter()
+            .filter_map(|prefix| {
+                let rd = fs::read_dir(prefix);
+                rd.ok()
+            })
+            .flatten()
+            .filter_map(|d| {
+                println!("{d:?}");
+                d.ok()
+            })
+            .find_map(|dir| {
+                let dir = dir.path();
+
+                println!("Checking {:?}", dir);
+
+                if !dir.is_dir() {
+                    return None;
+                }
+
+                let vdf_path = dir.join("compatibilitytool.vdf");
+                if !vdf_path.exists() {
+                    return None;
+                }
+
+                let vdf = fs::read_to_string(vdf_path).ok()?;
+                println!("{vdf}");
+
+                let vdf = Vdf::parse(&vdf).ok()?;
+
+                if vdf.key != "compatibilitytools" {
+                    return None;
+                }
+
+                let compatibilitytools = vdf.value.get_obj()?;
+                if compatibilitytools
+                    .iter()
+                    .find_map(
+                        |(key, values)| if key == "compat_tools" { Some(values) } else { None },
+                    )?
+                    .iter()
+                    .filter_map(|v| v.get_obj())
+                    .find(|o| o.contains_key(tool_name.as_str()))
+                    .is_some()
+                {
+                    println!("Found {tool_name} at {dir:?}");
+                    Some(dir)
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| anyhow!("Couldn't find a proton named {tool_name}"))?
+            .join("proton");
+
+        let compat_data_path = steam_dir
+            .library_paths()?
+            .into_iter()
+            .map(|path| path.join("steamapps").join("compatdata").join(app.app_id.to_string()))
+            .find(|path| path.exists())
+            .ok_or_else(|| anyhow!("Couldn't find a compat data path"))?;
+
+        Ok(Self { proton_path, compat_data_path })
     }
 
     pub fn launch(&self, app_path: impl AsRef<Path>, run_mode: &str) -> Command {
@@ -66,7 +127,17 @@ impl Compat {
 
         let mut cmd = Command::new(&self.proton_path);
 
-        cmd.current_dir(app_path.parent().unwrap()).arg(run_mode).arg(app_path);
+        cmd.env("STEAM_COMPAT_DATA_PATH", &self.compat_data_path)
+            .env("STEAM_COMPAT_CLIENT_INSTALL_PATH", &self.proton_path.parent().unwrap())
+            .arg(run_mode)
+            .arg(app_path);
+
+        if let Some(parent) = app_path.parent()
+            && !parent.to_str().unwrap().is_empty()
+        {
+            println!("{parent:?}");
+            cmd.current_dir(parent);
+        }
 
         cmd
     }
@@ -78,7 +149,7 @@ pub struct Compat;
 
 #[cfg(windows)]
 impl Compat {
-    pub fn new() -> Result<Self> {
+    pub fn new(_: &SteamDir, _: &SteamApp) -> Result<Self> {
         Ok(Self)
     }
 
@@ -126,19 +197,25 @@ struct LauncherUi {
 
 impl LauncherUi {
     fn new(launcher_config: LauncherConfig) -> Result<Self> {
-        let app_id = AppId(launcher_config.game_appid);
-        let client = Client::init_app(app_id)?;
-        let compat = Compat::new()?;
+        let steam_dir = SteamDir::locate()?;
+        let (game, game_lib) = steam_dir
+            .find_app(launcher_config.game_appid)?
+            .ok_or_else(|| anyhow!("Couldn't find Steam"))?;
+
+        let compat = Compat::new(&steam_dir, &game)?;
         let tool_path = PathBuf::from(launcher_config.tool_exe_path);
 
-        let game_path = PathBuf::from(client.apps().app_install_dir(app_id))
+        let game_path = game_lib
+            .resolve_app_dir(&game)
             .join(launcher_config.game_exe_subpath)
             .to_string_lossy()
             .to_string();
+
         let mut chosen_game_path = 0;
         let mut game_paths = vec![game_path.clone()];
 
-        let toml = fs::read_to_string(launcher_config.config_file_name)?;
+        let toml = fs::read_to_string(launcher_config.config_file_name)
+            .context("Couldn't load configuration file")?;
         let toml = toml.parse::<DocumentMut>()?;
 
         if let Some(launcher) = toml.get("launcher") {
