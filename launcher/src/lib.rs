@@ -63,12 +63,12 @@ impl Compat {
         Ok(Self { proton_path })
     }
 
-    pub fn launch(&self, app_path: impl AsRef<Path>, arg: &str) -> Result<Child> {
+    pub fn launch(&self, app_path: impl AsRef<Path>, run_mode: &str) -> Result<Child> {
         let app_path = app_path.as_ref();
 
         let cmd = Command::new(&self.proton_path)
             .current_dir(app_path.parent().unwrap())
-            .arg(arg)
+            .arg(run_mode)
             .arg(app_path)
             .spawn()?;
 
@@ -176,8 +176,8 @@ impl LauncherUi {
         let game_path = &self.game_paths[self.chosen_game_path];
         println!("Launching {:?}", game_path);
         let _ = self.compat.launch(game_path, "run");
-        thread::sleep(Duration::from_millis(5000));
-        self.launch_tool()
+
+        Ok(())
     }
 
     fn launch_tool(&self) -> Result<()> {
@@ -346,7 +346,7 @@ impl App for LauncherUi {
             ui.vertical_centered(|ui| {
                 let aw = ui.available_width();
 
-                if ui.add_sized([aw * 0.4, 0.0], Button::new("Launch game + tool")).clicked() {
+                if ui.add_sized([aw * 0.4, 0.0], Button::new("Launch game")).clicked() {
                     if let Err(e) = self.save_config() {
                         self.error_msg = Some(e.to_string())
                     }
@@ -387,15 +387,15 @@ pub fn run_launcher(title: &'static str, launcher_config: LauncherConfig) -> efr
     )
 }
 
-fn main() -> eframe::Result {
-    let title = "Elden Ring Practice Tool Launcher";
-    let launcher_config = LauncherConfig {
-        game_appid: 1245620,
-        game_exe_name: "eldenring.exe",
-        game_exe_subpath: "Game/eldenring.exe",
-        config_file_name: "tests/fixtures/jdsd_er_practice_tool.toml",
-        tool_exe_path: "jdsd_er_practice_tool.exe",
-    };
-
-    run_launcher(title, launcher_config)
-}
+// fn main() -> eframe::Result {
+//     let title = "Elden Ring Practice Tool Launcher";
+//     let launcher_config = LauncherConfig {
+//         game_appid: 1245620,
+//         game_exe_name: "eldenring.exe",
+//         game_exe_subpath: "Game/eldenring.exe",
+//         config_file_name: "tests/fixtures/jdsd_er_practice_tool.toml",
+//         tool_exe_path: "jdsd_er_practice_tool.exe",
+//     };
+//
+//     run_launcher(title, launcher_config)
+// }
