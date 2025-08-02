@@ -1,5 +1,6 @@
 [workspace]
-members = [ "launcher",
+members = [ 
+  "launcher",
   "tasks",
   "windows"
 ]

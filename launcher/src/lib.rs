@@ -1,15 +1,11 @@
+use std::fs;
 use std::path::{Path, PathBuf};
-#[cfg(unix)]
-use std::process::Child;
 use std::process::Command;
-use std::time::Duration;
-use std::{fs, thread};
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Result, anyhow};
 use eframe::{App, Frame, NativeOptions};
 use egui::{
-    Align, Button, CentralPanel, ComboBox, Id, Image, Label, Layout, Modal, Pos2, Rect, Sides,
-    ViewportBuilder,
+    Align, Button, CentralPanel, ComboBox, Id, Label, Layout, Modal, Sides, ViewportBuilder,
 };
 use rfd::FileDialog;
 use steamworks::{AppId, Client};
@@ -29,6 +25,8 @@ impl Compat {
         use std::env;
         use std::fs::File;
         use std::io::{BufRead, BufReader};
+
+        use anyhow::{Context, bail};
 
         // This gets filled automatically when instantiating a [`steamworks::Client`].
         let compat_data_path = PathBuf::from(
@@ -63,16 +61,14 @@ impl Compat {
         Ok(Self { proton_path })
     }
 
-    pub fn launch(&self, app_path: impl AsRef<Path>, run_mode: &str) -> Result<Child> {
+    pub fn launch(&self, app_path: impl AsRef<Path>, run_mode: &str) -> Command {
         let app_path = app_path.as_ref();
 
-        let cmd = Command::new(&self.proton_path)
-            .current_dir(app_path.parent().unwrap())
-            .arg(run_mode)
-            .arg(app_path)
-            .spawn()?;
+        let mut cmd = Command::new(&self.proton_path);
 
-        Ok(cmd)
+        cmd.current_dir(app_path.parent().unwrap()).arg(run_mode).arg(app_path);
+
+        cmd
     }
 }
 
@@ -86,8 +82,14 @@ impl Compat {
         Ok(Self)
     }
 
-    pub fn launch(&self, app_path: impl AsRef<Path>, _: &str) -> Result {
-        Command::new(app_path).current_dir(app_path.parent()).spawn()
+    pub fn launch(&self, app_path: impl AsRef<Path>, _: &str) -> Command {
+        let app_path = app_path.as_ref();
+
+        let mut cmd = Command::new(app_path);
+
+        cmd.current_dir(app_path.parent().unwrap());
+
+        cmd
     }
 }
 
@@ -175,14 +177,14 @@ impl LauncherUi {
     fn launch(&self) -> Result<()> {
         let game_path = &self.game_paths[self.chosen_game_path];
         println!("Launching {:?}", game_path);
-        let _ = self.compat.launch(game_path, "run");
+        let _ = self.compat.launch(game_path, "run").spawn()?;
 
         Ok(())
     }
 
     fn launch_tool(&self) -> Result<()> {
         println!("Launching tool {:?}", self.tool_path);
-        let _ = self.compat.launch(&self.tool_path, "runinprefix");
+        let _ = self.compat.launch(&self.tool_path, "runinprefix").arg("--inject").spawn()?;
 
         Ok(())
     }
@@ -370,7 +372,7 @@ impl App for LauncherUi {
     }
 }
 
-pub fn run_launcher(title: &'static str, launcher_config: LauncherConfig) -> eframe::Result {
+pub fn run(title: &'static str, launcher_config: LauncherConfig) -> eframe::Result {
     let options = NativeOptions {
         viewport: ViewportBuilder::default().with_inner_size((WINDOW_WIDTH, WINDOW_HEIGHT)),
         ..Default::default()
@@ -386,16 +388,3 @@ pub fn run_launcher(title: &'static str, launcher_config: LauncherConfig) -> efr
         }),
     )
 }
-
-// fn main() -> eframe::Result {
-//     let title = "Elden Ring Practice Tool Launcher";
-//     let launcher_config = LauncherConfig {
-//         game_appid: 1245620,
-//         game_exe_name: "eldenring.exe",
-//         game_exe_subpath: "Game/eldenring.exe",
-//         config_file_name: "tests/fixtures/jdsd_er_practice_tool.toml",
-//         tool_exe_path: "jdsd_er_practice_tool.exe",
-//     };
-//
-//     run_launcher(title, launcher_config)
-// }
