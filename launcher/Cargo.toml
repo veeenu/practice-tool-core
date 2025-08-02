@@ -7,6 +7,8 @@ edition = "2024"
 anyhow = "1.0.98"
 eframe = "0.32.0"
 egui = "0.32.0"
+egui_extras = { version = "0.32.0", features = ["all_loaders", "image"] }
+image = { version = "0.25.6", features = ["jpeg", "png"] }
 rfd = "0.15.4"
 steamworks = "0.12.1"
 toml_edit = "0.23.2"

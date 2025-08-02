@@ -5,15 +5,18 @@ use std::process::Command;
 use std::time::Duration;
 use std::{fs, thread};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use eframe::{App, Frame, NativeOptions};
 use egui::{
-    Align, Button, CentralPanel, ComboBox, Grid, Id, Label, Layout, Modal, Pos2, Rect, Response,
-    Sense, Sides, Vec2, ViewportBuilder,
+    Align, Button, CentralPanel, ComboBox, Id, Image, Label, Layout, Modal, Pos2, Rect, Sides,
+    ViewportBuilder,
 };
 use rfd::FileDialog;
 use steamworks::{AppId, Client};
-use toml_edit::{DocumentMut, value};
+use toml_edit::{Array, DocumentMut, Item, Table, Value, value};
+
+const WINDOW_WIDTH: f32 = 480.0;
+const WINDOW_HEIGHT: f32 = 240.0;
 
 #[cfg(unix)]
 struct Compat {
@@ -22,10 +25,11 @@ struct Compat {
 
 #[cfg(unix)]
 impl Compat {
-    fn new(client: &Client) -> Result<Self> {
+    fn new() -> Result<Self> {
         use std::env;
         use std::fs::File;
         use std::io::{BufRead, BufReader};
+
         // This gets filled automatically when instantiating a [`steamworks::Client`].
         let compat_data_path = PathBuf::from(
             env::var("STEAM_COMPAT_DATA_PATH").context("Compat data path unavailable")?,
@@ -78,7 +82,7 @@ pub struct Compat;
 
 #[cfg(windows)]
 impl Compat {
-    pub fn new(_: &Client) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self)
     }
 
@@ -122,25 +126,46 @@ impl LauncherUi {
     fn new(launcher_config: LauncherConfig) -> Result<Self> {
         let app_id = AppId(launcher_config.game_appid);
         let client = Client::init_app(app_id)?;
-        let compat = Compat::new(&client)?;
+        let compat = Compat::new()?;
         let tool_path = PathBuf::from(launcher_config.tool_exe_path);
 
         let game_path = PathBuf::from(client.apps().app_install_dir(app_id))
             .join(launcher_config.game_exe_subpath)
             .to_string_lossy()
             .to_string();
-        let mut game_paths = vec![game_path];
+        let mut chosen_game_path = 0;
+        let mut game_paths = vec![game_path.clone()];
 
         let toml = fs::read_to_string(launcher_config.config_file_name)?;
-        if let Some(paths) = toml.parse::<DocumentMut>()?["launcher"]["paths"].as_array() {
-            game_paths.extend(paths.into_iter().filter_map(|el| el.as_str()).map(|s| s.to_owned()));
+        let toml = toml.parse::<DocumentMut>()?;
+
+        if let Some(launcher) = toml.get("launcher") {
+            if let Some(paths) = launcher.get("paths")
+                && let Some(paths) = paths.as_array()
+            {
+                game_paths.extend(
+                    paths
+                        .into_iter()
+                        .filter_map(|el| el.as_str())
+                        .filter(|&el| el != game_path)
+                        .map(|s| s.to_owned()),
+                );
+            }
+
+            if let Some(chosen) = launcher.get("last_run")
+                && let Some(chosen) = chosen.as_integer()
+                && chosen > 0
+                && chosen < game_paths.len() as i64
+            {
+                chosen_game_path = chosen as usize
+            };
         }
 
         Ok(Self {
             game_paths,
             tool_path,
             compat,
-            chosen_game_path: 0,
+            chosen_game_path,
             confirm_msg: None,
             error_msg: None,
             launcher_config,
@@ -156,15 +181,16 @@ impl LauncherUi {
     }
 
     fn launch_tool(&self) -> Result<()> {
+        println!("Launching tool {:?}", self.tool_path);
         let _ = self.compat.launch(&self.tool_path, "runinprefix");
 
         Ok(())
     }
 
-    fn confirm_modal(&mut self, ctx: &egui::Context, ui: &egui::Ui) {
+    fn confirm_modal(&mut self, ctx: &egui::Context) {
         let resp = if let Some(&(msg, action)) = self.confirm_msg.as_ref() {
             Modal::new(Id::new("confirm_modal")).show(ctx, |ui| {
-                ui.label("Delete this game version?");
+                ui.label(msg);
                 Sides::new().show(
                     ui,
                     |_| {},
@@ -192,7 +218,7 @@ impl LauncherUi {
         }
     }
 
-    fn error_modal(&mut self, ctx: &egui::Context, ui: &egui::Ui) {
+    fn error_modal(&mut self, ctx: &egui::Context) {
         let resp = if let Some(e) = self.error_msg.as_ref() {
             Modal::new(Id::new("modal_error")).show(ctx, |ui| {
                 ui.heading("Error");
@@ -208,11 +234,52 @@ impl LauncherUi {
         }
     }
 
+    fn save_config(&mut self) -> Result<()> {
+        let toml = fs::read_to_string(self.launcher_config.config_file_name).map_err(|e| {
+            anyhow!(
+                "Couldn't load configuration file {}:\n{e}",
+                self.launcher_config.config_file_name
+            )
+        })?;
+
+        let mut toml = toml.parse::<DocumentMut>().map_err(|e| {
+            anyhow!(
+                "Couldn't parse configuration file {}:\n{e}",
+                self.launcher_config.config_file_name
+            )
+        })?;
+
+        if !toml.contains_key("launcher") {
+            toml.insert("launcher", Item::Table(Table::new()));
+        }
+
+        let mut game_paths = Array::new();
+        for p in &self.game_paths {
+            game_paths.push(p);
+        }
+
+        toml["launcher"]["paths"] = Item::Value(Value::Array(game_paths));
+        toml["launcher"]["last_run"] = value(self.chosen_game_path as i64);
+
+        fs::write(self.launcher_config.config_file_name, toml.to_string()).map_err(|e| {
+            anyhow!(
+                "Couldn't save configuration file {}: {e}",
+                self.launcher_config.config_file_name
+            )
+        })?;
+
+        Ok(())
+    }
+
     fn add_game_version(&mut self) {
         if let Some(path) = FileDialog::new().pick_file() {
             if path.ends_with(self.launcher_config.game_exe_subpath) {
                 let path = path.to_string_lossy().to_string();
                 self.game_paths.push(path);
+
+                if let Err(e) = self.save_config() {
+                    self.error_msg = Some(e.to_string())
+                }
             } else {
                 self.error_msg =
                     Some(format!("This is not a path to the game's executable:\n{path:?}"));
@@ -221,10 +288,13 @@ impl LauncherUi {
     }
 
     fn delete_game_version(&mut self) {
-        println!("Deleting {}", self.chosen_game_path);
         if self.game_paths.len() > 1 {
             self.game_paths.remove(self.chosen_game_path);
             self.chosen_game_path = usize::min(self.chosen_game_path, self.game_paths.len() - 1);
+
+            if let Err(e) = self.save_config() {
+                self.error_msg = Some(e.to_string())
+            }
         } else {
             self.error_msg = Some("There must be at least one game version added.".to_string());
         }
@@ -234,8 +304,16 @@ impl LauncherUi {
 impl App for LauncherUi {
     fn update(&mut self, ctx: &egui::Context, _: &mut Frame) {
         CentralPanel::default().show(ctx, |ui| {
-            self.confirm_modal(ctx, ui);
-            self.error_modal(ctx, ui);
+            // Image::new(egui::include_image!("../tests/fixtures/er.jpg"))
+            //     .max_width(WINDOW_WIDTH)
+            //     .maintain_aspect_ratio(true)
+            //     .paint_at(ui, Rect::from_two_pos(Pos2 { x: 0.0, y: 0.0 }, Pos2 { x:
+            // WINDOW_WIDTH, y: WINDOW_HEIGHT }));
+
+            ui.add_space(40.0);
+
+            self.confirm_modal(ctx);
+            self.error_modal(ctx);
 
             ui.label("Choose a game version:");
             ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
@@ -248,52 +326,76 @@ impl App for LauncherUi {
                     self.add_game_version();
                 }
 
-                ComboBox::from_id_salt("Game version")
+                let resp = ComboBox::from_id_salt("Game version")
                     .width(ui.available_width())
                     .truncate()
                     .selected_text(&self.game_paths[self.chosen_game_path])
                     .show_index(ui, &mut self.chosen_game_path, self.game_paths.len(), |i| {
                         &self.game_paths[i]
                     });
+
+                if resp.changed()
+                    && let Err(e) = self.save_config()
+                {
+                    self.error_msg = Some(e.to_string())
+                }
             });
+
+            ui.add_space(40.0);
 
             ui.vertical_centered(|ui| {
                 let aw = ui.available_width();
 
                 if ui.add_sized([aw * 0.4, 0.0], Button::new("Launch game + tool")).clicked() {
-                    self.launch();
+                    if let Err(e) = self.save_config() {
+                        self.error_msg = Some(e.to_string())
+                    }
+
+                    if let Err(e) = self.launch() {
+                        self.error_msg = Some(e.to_string());
+                    }
                 }
 
                 if ui.add_sized([aw * 0.4, 0.0], Button::new("Launch tool only")).clicked() {
-                    self.launch_tool();
-                }
+                    if let Err(e) = self.save_config() {
+                        self.error_msg = Some(e.to_string())
+                    }
 
-                ui.end_row();
+                    if let Err(e) = self.launch_tool() {
+                        self.error_msg = Some(e.to_string());
+                    }
+                }
             });
         });
     }
 }
 
-fn main() -> eframe::Result {
+pub fn run_launcher(title: &'static str, launcher_config: LauncherConfig) -> eframe::Result {
     let options = NativeOptions {
-        viewport: ViewportBuilder::default().with_inner_size((480.0, 240.0)),
+        viewport: ViewportBuilder::default().with_inner_size((WINDOW_WIDTH, WINDOW_HEIGHT)),
         ..Default::default()
     };
 
     eframe::run_native(
-        "Launcher",
+        title,
         options,
-        Box::new(|_| {
-            Ok(Box::new(
-                LauncherUi::new(LauncherConfig {
-                    game_appid: 1245620,
-                    game_exe_name: "eldenring.exe",
-                    game_exe_subpath: "Game/eldenring.exe",
-                    config_file_name: "tests/fixtures/jdsd_er_practice_tool.toml",
-                    tool_exe_path: "jdsd_er_practice_tool.exe",
-                })
-                .unwrap(),
-            ))
+        Box::new(|cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+
+            Ok(Box::new(LauncherUi::new(launcher_config).unwrap()))
         }),
     )
+}
+
+fn main() -> eframe::Result {
+    let title = "Elden Ring Practice Tool Launcher";
+    let launcher_config = LauncherConfig {
+        game_appid: 1245620,
+        game_exe_name: "eldenring.exe",
+        game_exe_subpath: "Game/eldenring.exe",
+        config_file_name: "tests/fixtures/jdsd_er_practice_tool.toml",
+        tool_exe_path: "jdsd_er_practice_tool.exe",
+    };
+
+    run_launcher(title, launcher_config)
 }

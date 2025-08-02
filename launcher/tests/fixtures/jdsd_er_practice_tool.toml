@@ -78,7 +78,5 @@ indicators = [
 ]
 
 [launcher]
-paths = [
-  "/mnt/e/Patches/Elden Ring/Patches/2.00.0/",
-  "/mnt/e/Patches/Elden Ring/Patches/2.06.0/",
-]
+paths = ["/home/andrea/.local/share/Steam/steamapps/common/ELDEN RING/Game/eldenring.exe", "/mnt/e/Patches/Elden Ring/Patches/2.00.0/Game/eldenring.exe", "/mnt/e/Patches/Elden Ring/Patches/2.06.0/Game/eldenring.exe"]
+last_run = 0
