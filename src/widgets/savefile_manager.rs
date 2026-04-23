@@ -341,10 +341,7 @@ impl FileTree {
 
                 Ok(FileTree::Directory { path, children })
             },
-            m => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Unrecognized file type for {path:?}: {m:?}"),
-            )),
+            m => Err(io::Error::other(format!("Unrecognized file type for {path:?}: {m:?}"))),
         }
     }
 

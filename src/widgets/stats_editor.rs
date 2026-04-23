@@ -32,7 +32,7 @@ impl<'a> Datum<'a> {
 }
 
 pub trait Stats: Send + Sync + 'static {
-    fn data(&mut self) -> Option<impl Iterator<Item = Datum>>;
+    fn data(&mut self) -> Option<impl Iterator<Item = Datum<'_>>>;
     fn read(&mut self);
     fn write(&mut self);
     fn clear(&mut self);

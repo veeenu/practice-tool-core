@@ -11,9 +11,10 @@ mod dist;
 mod file_install;
 pub mod params;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Result};
 pub use dist::Distribution;
 pub use file_install::FileInstall;
+use sysinfo::System;
 
 /// Points to the current project's root directory (e.g. the one with the
 /// topmost `Cargo.toml`).
@@ -60,8 +61,9 @@ pub fn cargo_command(cmd: &'static str) -> Command {
 /// Run a command in the appropriate Steam environment.
 ///
 /// On Windows, it constructs a command and runs it in the project directory.
-/// On Linux, it wraps the command in `protontricks-launch`.
-pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32) -> Result<Command> {
+/// On Linux, it figures out the pertinent environment variables from the
+/// running process and runs `proton` manually.
+pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32, exe_name: &str) -> Result<Command> {
     let project_root = project_root();
 
     if cfg!(windows) {
@@ -71,16 +73,52 @@ pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32) -> Result<Command
         return Ok(cmd);
     }
 
+    let sys = System::new_all();
+    let Some((proton_path, compat_data_path, compat_client_install_path)) =
+        sys.processes().iter().find_map(|(_, process)| {
+            if !process.name().to_str()?.contains(exe_name) {
+                return None;
+            }
+
+            if process.exe()?.ends_with("files/bin/wine64_preloader") {
+                return None;
+            }
+
+            let proton_path = process.exe()?.parent()?.parent()?.parent()?.join("proton");
+            let proton_path = match proton_path.strip_prefix("/run/host").ok() {
+                Some(p) => Path::new("/").join(p),
+                None => proton_path,
+            };
+
+            let compat_data_path = process.environ().iter().find_map(|env| {
+                env.to_string_lossy().strip_prefix("STEAM_COMPAT_DATA_PATH=").map(|s| s.to_owned())
+            });
+
+            let compat_client_install_path = process.environ().iter().find_map(|env| {
+                env.to_string_lossy()
+                    .strip_prefix("STEAM_COMPAT_CLIENT_INSTALL_PATH=")
+                    .map(|s| s.to_owned())
+            });
+
+            Some((proton_path, compat_data_path?, compat_client_install_path?))
+        })
+    else {
+        bail!("Couldn't find running process");
+    };
+
+    println!("proton_path={proton_path:?}");
+    println!("compat_data_path={compat_data_path:?}");
+    println!("compat_client_install_path={compat_client_install_path:?}");
+
     let child_cmd = child_cmd.as_ref().strip_prefix(&project_root).unwrap().with_extension("exe");
 
-    Command::new("protontricks-launch")
-        .arg("-h")
-        .output()
-        .context("Could not run `protontricks-launch`: {e}")?;
+    let mut cmd = Command::new(proton_path);
 
-    let mut cmd = Command::new("protontricks-launch");
-
-    cmd.current_dir(project_root).arg("--appid").arg(appid.to_string()).arg(child_cmd);
+    cmd.env("SteamAppId", appid.to_string())
+        .env("STEAM_COMPAT_DATA_PATH", compat_data_path)
+        .env("STEAM_COMPAT_CLIENT_INSTALL_PATH", compat_client_install_path)
+        .arg("runinprefix")
+        .arg(child_cmd);
 
     Ok(cmd)
 }

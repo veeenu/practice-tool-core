@@ -184,7 +184,7 @@ fn test_stats_editor() {
     }
 
     impl Stats for CharacterStats {
-        fn data(&mut self) -> Option<impl Iterator<Item = Datum>> {
+        fn data(&mut self) -> Option<impl Iterator<Item = Datum<'_>>> {
             if self.open {
                 Some(
                     [
