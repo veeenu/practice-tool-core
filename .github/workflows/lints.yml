@@ -17,8 +17,8 @@ jobs:
       - name: Rust toolchains
         run: |
           rustup toolchain install nightly --target x86_64-pc-windows-msvc --profile minimal
-          rustup component add rustfmt
-          rustup component add clippy
+          rustup component add rustfmt --toolchain nightly
+          rustup component add clippy --toolchain nightly
           rustup default nightly
 
       - name: Lints
