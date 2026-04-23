@@ -117,6 +117,7 @@ pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32, exe_name: &str) -
     cmd.env("SteamAppId", appid.to_string())
         .env("STEAM_COMPAT_DATA_PATH", compat_data_path)
         .env("STEAM_COMPAT_CLIENT_INSTALL_PATH", compat_client_install_path)
+        .current_dir(project_root)
         .arg("runinprefix")
         .arg(child_cmd);
 
