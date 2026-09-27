@@ -45,5 +45,5 @@ pub trait Widget: Send + Sync {
         false
     }
 
-    fn log(&mut self, _tx: Sender<String>) {}
+    fn log(&mut self, _tx: &Sender<String>) {}
 }

@@ -1,3 +1,5 @@
+use crossbeam_channel::Sender;
+
 use crate::key::Key;
 use crate::widgets::Widget;
 
@@ -68,7 +70,7 @@ impl<F: Flag> Widget for FlagWidget<F> {
         }
     }
 
-    fn log(&mut self, tx: crossbeam_channel::Sender<String>) {
+    fn log(&mut self, tx: &Sender<String>) {
         self.logs.drain(..).for_each(|log| {
             tx.send(log).ok();
         });

@@ -81,7 +81,7 @@ fn test_savefile_manager() {
         move |ui| {
             let file_path = savefile_manager.0.path().join("ER0000.sl2");
             savefile_manager.1.render(ui);
-            savefile_manager.1.log(tx.clone());
+            savefile_manager.1.log(&tx);
 
             for log in rx.try_iter() {
                 eprintln!("Received log {log}");

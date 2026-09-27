@@ -80,9 +80,9 @@ impl Widget for Group {
         }
     }
 
-    fn log(&mut self, tx: Sender<String>) {
+    fn log(&mut self, tx: &Sender<String>) {
         for widget in &mut self.children {
-            widget.log(tx.clone());
+            widget.log(tx);
         }
     }
 }

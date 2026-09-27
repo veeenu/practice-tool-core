@@ -1,3 +1,5 @@
+use crossbeam_channel::Sender;
+
 use crate::key::Key;
 use crate::widgets::{scaling_factor, Widget, BUTTON_HEIGHT, BUTTON_WIDTH};
 
@@ -81,7 +83,7 @@ impl<S: PositionStorage> Widget for Position<S> {
         self.load_position();
     }
 
-    fn log(&mut self, tx: crossbeam_channel::Sender<String>) {
+    fn log(&mut self, tx: &Sender<String>) {
         self.logs.drain(..).for_each(|log| {
             tx.send(log).ok();
         });
