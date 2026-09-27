@@ -61,7 +61,7 @@ impl Widget for SavefileManager {
         self.0.want_exit()
     }
 
-    fn log(&mut self, tx: Sender<String>) {
+    fn log(&mut self, tx: &Sender<String>) {
         self.0.log(tx)
     }
 }
@@ -314,7 +314,7 @@ impl Widget for SavefileManagerInner {
         self.load_savefile();
     }
 
-    fn log(&mut self, tx: Sender<String>) {
+    fn log(&mut self, tx: &Sender<String>) {
         for log in self.logs.drain(..) {
             tx.send(log).ok();
         }
