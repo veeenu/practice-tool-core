@@ -80,15 +80,18 @@ pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32, exe_name: &str) -
                 return None;
             }
 
-            if process.exe()?.ends_with("files/bin/wine64_preloader") {
-                return None;
-            }
-
-            let proton_path = process.exe()?.parent()?.parent()?.parent()?.join("proton");
-            let proton_path = match proton_path.strip_prefix("/run/host").ok() {
+            let exe = process.exe()?;
+            let exe = match exe.strip_prefix("/run/host").ok() {
                 Some(p) => Path::new("/").join(p),
-                None => proton_path,
+                None => exe.to_path_buf(),
             };
+
+            // The process runs a Wine binary somewhere inside the Proton installation,
+            // at a depth that varies between Proton versions (e.g. `files/bin/wine64` or
+            // `files/lib/wine/x86_64-unix/wine-preloader`), so search upwards for the
+            // `proton` script.
+            let proton_path =
+                exe.ancestors().map(|dir| dir.join("proton")).find(|path| path.is_file())?;
 
             let compat_data_path = process.environ().iter().find_map(|env| {
                 env.to_string_lossy().strip_prefix("STEAM_COMPAT_DATA_PATH=").map(|s| s.to_owned())
