@@ -86,9 +86,10 @@ pub fn steam_command<P: AsRef<Path>>(child_cmd: P, appid: u32, exe_name: &str) -
                 None => exe.to_path_buf(),
             };
 
-            // The process runs a Wine binary somewhere inside the Proton installation,
-            // at a depth that varies between Proton versions (e.g. `files/bin/wine64` or
-            // `files/lib/wine/x86_64-unix/wine-preloader`), so search upwards for the
+            // The process runs a Wine binary somewhere inside the Proton
+            // installation, at a depth that varies between Proton
+            // versions (e.g. `files/bin/wine64` or `files/lib/wine/
+            // x86_64-unix/wine-preloader`), so search upwards for the
             // `proton` script.
             let proton_path =
                 exe.ancestors().map(|dir| dir.join("proton")).find(|path| path.is_file())?;
