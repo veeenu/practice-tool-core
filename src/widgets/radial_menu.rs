@@ -63,7 +63,7 @@ unsafe fn draw_slice(
 
 pub fn radial_menu(
     ui: &imgui::Ui,
-    elements: &[&str],
+    elements: &[impl AsRef<str>],
     pos: ImVec2,
     radius_min: f32,
     radius_max: f32,
@@ -87,7 +87,7 @@ pub fn radial_menu(
         unsafe {
             draw_slice(
                 ui,
-                txt,
+                txt.as_ref(),
                 angle_base,
                 (angle_min, angle_max),
                 (radius_min, radius_max),
