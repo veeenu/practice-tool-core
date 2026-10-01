@@ -6,7 +6,7 @@ use serde::Deserialize;
 const REPR_MAP: &[(imgui::Key, &str)] = &[
     (imgui::Key::Tab, "tab"),
     (imgui::Key::LeftArrow, "left"),
-    (imgui::Key::RightArrow, "righ"),
+    (imgui::Key::RightArrow, "right"),
     (imgui::Key::UpArrow, "up"),
     (imgui::Key::DownArrow, "down"),
     (imgui::Key::PageUp, "pgup"),
@@ -77,7 +77,7 @@ const REPR_MAP: &[(imgui::Key, &str)] = &[
     (imgui::Key::F11, "f11"),
     (imgui::Key::F12, "f12"),
     (imgui::Key::Apostrophe, "'"),
-    (imgui::Key::Comma, "),"),
+    (imgui::Key::Comma, ","),
     (imgui::Key::Minus, "-"),
     (imgui::Key::Period, "."),
     (imgui::Key::Slash, "/"),
@@ -386,6 +386,32 @@ impl Key {
         ui.is_key_pressed(self.key)
             && self.modifiers.iter().all(|modifier| modifier.map(|k| k.is_down(ui)).unwrap_or(true))
             && ModifierState::from(ui) == ModifierState::from(self.modifiers)
+    }
+
+    /// Returns the non-modifier keyboard key pressed in this frame, along with
+    /// the held modifiers. Modifiers are side-agnostic (e.g. `ctrl`) unless
+    /// only their right side is held (e.g. `rshift`).
+    pub fn pressed(ui: &Ui) -> Option<Self> {
+        let key = REPR_MAP
+            .iter()
+            .map(|&(key, _)| key)
+            // Keyboard keys come first; gamepad, mouse and modifier flags after.
+            // Modifier flags aren't keys, and querying them asserts.
+            .filter(|&key| (key as u32) < imgui::sys::ImGuiKey_GamepadStart as u32)
+            .filter(|&key| MOD_REPR_MAP.iter().all(|&(modifier, _)| key != modifier.into()))
+            .find(|&key| ui.is_key_pressed_no_repeat(key))?;
+
+        let mut modifiers = [
+            (Modifier::ModCtrl, Modifier::LeftCtrl, Modifier::RightCtrl),
+            (Modifier::ModShift, Modifier::LeftShift, Modifier::RightShift),
+            (Modifier::ModAlt, Modifier::LeftAlt, Modifier::RightAlt),
+            (Modifier::ModSuper, Modifier::LeftSuper, Modifier::RightSuper),
+        ]
+        .into_iter()
+        .filter(|(any, ..)| any.is_down(ui))
+        .map(|(any, left, right)| if right.is_down(ui) && !left.is_down(ui) { right } else { any });
+
+        Some(Self { key, modifiers: [modifiers.next(), modifiers.next(), modifiers.next()] })
     }
 }
 
