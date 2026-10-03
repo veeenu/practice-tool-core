@@ -26,7 +26,11 @@ imgui = "0.12"
 once_cell.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
+tracing = "0.1"
 windows.workspace = true
+
+[features]
+profiling = ["windows/Win32_System_Performance", "windows/Win32_System_Threading"]
 
 [dev-dependencies]
 glow = "0.12.0"

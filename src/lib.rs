@@ -2,6 +2,7 @@
 
 pub mod controller;
 pub mod key;
+pub mod profiler;
 pub mod widgets;
 
 pub use crossbeam_channel;
