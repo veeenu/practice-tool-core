@@ -397,7 +397,7 @@ impl Key {
             .map(|&(key, _)| key)
             // Keyboard keys come first; gamepad, mouse and modifier flags after.
             // Modifier flags aren't keys, and querying them asserts.
-            .filter(|&key| (key as u32) < imgui::sys::ImGuiKey_GamepadStart as u32)
+            .filter(|&key| (key as u32) < imgui::sys::ImGuiKey_GamepadStart)
             .filter(|&key| MOD_REPR_MAP.iter().all(|&(modifier, _)| key != modifier.into()))
             .find(|&key| ui.is_key_pressed_no_repeat(key))?;
 
