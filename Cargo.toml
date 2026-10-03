@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "memedit",
   "tasks",
   "windows"
 ]
