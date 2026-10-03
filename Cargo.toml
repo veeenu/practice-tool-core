@@ -26,11 +26,13 @@ crossbeam-channel = "0.5.12"
 imgui = { version = "0.12", features = ["tables-api"] }
 once_cell.workspace = true
 parking_lot.workspace = true
+semver = "1"
 serde.workspace = true
 serde_path_to_error = "0.1"
 toml = "0.8"
 toml_edit = "0.22"
 tracing = "0.1"
+ureq = { version = "2", features = ["json"] }
 windows.workspace = true
 
 [features]

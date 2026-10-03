@@ -7,6 +7,7 @@ pub mod gamepad;
 pub mod icons;
 pub mod key;
 pub mod profiler;
+pub mod update;
 pub mod widgets;
 
 pub use crossbeam_channel;
