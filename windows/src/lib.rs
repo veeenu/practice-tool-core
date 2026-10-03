@@ -1,6 +1,8 @@
 //! Windows-specific components.
 #![cfg(windows)]
 
+pub mod xinput;
+
 use std::fs;
 use std::path::PathBuf;
 
