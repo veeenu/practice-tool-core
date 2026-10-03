@@ -23,10 +23,13 @@ edition = "2021"
 
 [dependencies]
 crossbeam-channel = "0.5.12"
-imgui = "0.12"
+imgui = { version = "0.12", features = ["tables-api"] }
 once_cell.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
+serde_path_to_error = "0.1"
+toml = "0.8"
+toml_edit = "0.22"
 tracing = "0.1"
 windows.workspace = true
 
