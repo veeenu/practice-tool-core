@@ -4,6 +4,7 @@ use std::fs;
 use imgui::sys::ImVec2;
 use practice_tool_core::widgets::flag::{Flag, FlagWidget};
 use practice_tool_core::widgets::group::Group;
+use practice_tool_core::widgets::input_viewer::InputViewer;
 use practice_tool_core::widgets::nudge_position::{NudgePosition, NudgePositionStorage};
 use practice_tool_core::widgets::position::{Position, PositionStorage};
 use practice_tool_core::widgets::savefile_manager::SavefileManager;
@@ -297,4 +298,18 @@ fn test_radial_menu() {
             }
         }
     }
+}
+
+#[test]
+fn test_input_viewer() {
+    // Nothing writes `GAMEPAD_STATE` here, so only keyboard input shows up.
+    let mut input_viewer = InputViewer::new(5, "ctrl+i".parse().ok());
+
+    harness_test! {
+        move |ui| {
+            input_viewer.render(ui);
+            input_viewer.render_closed(ui);
+            input_viewer.interact(ui);
+        }
+    };
 }
