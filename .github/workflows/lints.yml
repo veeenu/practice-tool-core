@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   lints:
@@ -25,5 +25,8 @@ jobs:
         run: |
           cargo +nightly clippy -- -D warnings
           cargo +nightly fmt --all -- --check
+
+      - name: Tests
+        run: cargo +nightly test --workspace --lib
 
 

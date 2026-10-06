@@ -10,6 +10,7 @@ heck = "0.4.0"
 once_cell.workspace = true
 parking_lot.workspace = true
 pelite = "0.10.0"
+quick-xml = "0.41"
 rayon = "1.5.3"
 regex = "1.5.5"
 serde.workspace = true

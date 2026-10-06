@@ -2,6 +2,7 @@ use crossbeam_channel::Sender;
 
 pub mod flag;
 pub mod group;
+pub mod input_viewer;
 pub mod label;
 pub mod nudge_position;
 pub mod position;

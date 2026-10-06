@@ -1,5 +1,7 @@
 [workspace]
 members = [
+  "macro-param",
+  "memedit",
   "tasks",
   "windows"
 ]
@@ -10,7 +12,7 @@ parking_lot = "0.12.1"
 serde = { version = "1.0.197", features = ["derive"] }
 
 [workspace.dependencies.windows]
-version = "0.54.0"
+version = "0.62.0"
 features = ["Win32_UI_Input_XboxController"]
 
 [package]
@@ -22,11 +24,20 @@ edition = "2021"
 
 [dependencies]
 crossbeam-channel = "0.5.12"
-imgui = "0.12"
+imgui = { version = "0.12", features = ["tables-api"] }
 once_cell.workspace = true
 parking_lot.workspace = true
+semver = "1"
 serde.workspace = true
+serde_path_to_error = "0.1"
+toml = "0.8"
+toml_edit = "0.22"
+tracing = "0.1"
+ureq = { version = "2", features = ["json"] }
 windows.workspace = true
+
+[features]
+profiling = ["windows/Win32_System_Performance", "windows/Win32_System_Threading"]
 
 [dev-dependencies]
 glow = "0.12.0"

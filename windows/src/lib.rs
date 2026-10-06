@@ -1,13 +1,24 @@
 //! Windows-specific components.
 #![cfg(windows)]
 
+pub mod dinput8;
+pub mod startup;
+pub mod version;
+pub mod xinput;
+
 use std::fs;
 use std::path::PathBuf;
 
-use windows::core::w;
+use windows::core::{w, HSTRING};
 use windows::Win32::System::Registry::{
     RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_LOCAL_MACHINE, KEY_READ, REG_SZ, REG_VALUE_TYPE,
 };
+use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MESSAGEBOX_RESULT, MESSAGEBOX_STYLE};
+
+/// Shows a Windows message box.
+pub fn message_box(caption: &str, text: &str, style: MESSAGEBOX_STYLE) -> MESSAGEBOX_RESULT {
+    unsafe { MessageBoxW(None, &HSTRING::from(text), &HSTRING::from(caption), style) }
+}
 
 unsafe fn get_steam_path_from_registry() -> Result<PathBuf, String> {
     let mut key_handle = HKEY::default();
@@ -15,14 +26,20 @@ unsafe fn get_steam_path_from_registry() -> Result<PathBuf, String> {
     RegOpenKeyExW(
         HKEY_LOCAL_MACHINE,
         w!(r"SOFTWARE\WOW6432Node\Valve\Steam"),
-        0,
+        Some(0),
         KEY_READ,
         &mut key_handle,
     )
     .ok()
     .or_else(|_| {
-        RegOpenKeyExW(HKEY_LOCAL_MACHINE, w!(r"SOFTWARE\Valve\Steam"), 0, KEY_READ, &mut key_handle)
-            .ok()
+        RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            w!(r"SOFTWARE\Valve\Steam"),
+            Some(0),
+            KEY_READ,
+            &mut key_handle,
+        )
+        .ok()
     })
     .map_err(|e| format!("Could not open key: {e:?}"))?;
 
@@ -71,7 +88,7 @@ pub fn find_steam_library_folders() -> Result<Vec<PathBuf>, String> {
         .lines()
         .filter_map(|l| {
             if l.contains(r#""path""#) {
-                l.split_whitespace().skip(1).next().map(|s| PathBuf::from(&s[1..s.len() - 1]))
+                l.split_whitespace().nth(1).map(|s| PathBuf::from(&s[1..s.len() - 1]))
             } else {
                 None
             }
