@@ -97,7 +97,7 @@ impl InputViewer {
                 .map(|k| format!("Input viewer ({})", k))
                 .unwrap_or_else(|| "Input viewer".to_string()),
             hotkey,
-            enabled: true,
+            enabled: false,
             history: History::new(seconds * 60),
             key_slots: Default::default(),
             tick: 0,
